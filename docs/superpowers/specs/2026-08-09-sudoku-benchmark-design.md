@@ -37,7 +37,11 @@ Damit ergeben sich 9 Sprach-Varianten × 6 Algorithmen = 54 Messpunkte aus
 
 Performance-Vorgaben:
 - C/C++/Rust: `-O3 -march=native -flto` (Rust: `opt-level=3`, `lto=true`, `target-cpu=native`).
-- Assembly: Bitmasken in Registern, `tzcnt`/`popcnt`, minimale Speicherzugriffe.
+- Assembly: NASM, `global main`, gegen libc gelinkt (`gcc -no-pie -pthread`).
+  I/O, Parsing, Zeitmessung und Ausgabe dürfen libc benutzen; der **Solver
+  selbst muss handgeschriebenes Assembly sein** — kein Aufruf eines C-Solvers.
+  Bitmasken in Registern, `tzcnt`/`popcnt`/`blsr`/`andn` (Haswell, BMI1/BMI2),
+  minimale Speicherzugriffe.
 - Python: flache Arrays statt verschachtelter Listen, lokale Namensbindung in Hot Loops; numpy nur wo es tatsächlich schneller ist.
 - JavaScript: monomorphe Typed Arrays (`Uint8Array`/`Uint32Array`).
 - Board-Repräsentation überall flach (81 Bytes) + 27 Bitmasken, cache-freundlich.
