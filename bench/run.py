@@ -22,6 +22,18 @@ def clear_thp_disable():
         pass
 
 
+def build_all():
+    """Run make under a lock so concurrent harness runs cannot race on build/.
+
+    -k keeps a language that does not compile from blocking the others.
+    """
+    import fcntl
+    (ROOT / 'build').mkdir(exist_ok=True)
+    with open(ROOT / 'build/.make.lock', 'w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return subprocess.run(['make', '-ks'], cwd=ROOT)
+
+
 def cmd_for(lang, algo):
     if lang == 'python':
         p = ROOT / 'impl/python' / f'{algo}.py'
@@ -154,7 +166,8 @@ def main():
         return
 
     clear_thp_disable()
-    subprocess.run(['make', '-s'], cwd=ROOT, check=True)
+    if build_all().returncode:
+        print('warning: some targets failed to build (see above)\n')
     impls = discover(args.lang or LANGS, args.algo or ALGOS)
     if not impls:
         sys.exit('no implementations found')

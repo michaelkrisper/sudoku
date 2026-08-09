@@ -3,3 +3,4 @@ __pycache__/
 target/
 results/*.json
 !results/.gitkeep
+!results/github-runner.json

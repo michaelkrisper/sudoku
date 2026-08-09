@@ -1,0 +1,58 @@
+name: benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchains
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nasm clang
+          python3 -m pip install --quiet matplotlib
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Record runner hardware
+        run: |
+          grep -m1 'model name' /proc/cpuinfo
+          nproc
+          gcc --version | head -1
+          clang --version | head -1
+
+      - name: Build and benchmark
+        run: |
+          python3 bench/run.py
+          cp "$(ls -t results/*.json | head -1)" results/github-runner.json
+          python3 bench/run.py --readme results/github-runner.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            results/*.json
+            assets/*.png
+
+      - name: Commit results (manual runs only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add README.md assets results
+          git diff --quiet --cached || git commit -m "Benchmark results from GitHub runner"
+          git push
