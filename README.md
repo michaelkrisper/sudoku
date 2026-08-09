@@ -5,17 +5,45 @@ Norvig constraint propagation, Dancing Links (DLX), a pure rule-based solver
 and a multithreaded variant — across Python, JavaScript, Go, Rust, C++, C and
 x86-64 assembly.
 
-Every solver is a standalone program with the same contract:
+Six algorithms, seven languages, one contract. See [algorithms.md](algorithms.md)
+for what each algorithm actually does.
+
+## The contract
+
+Every solver is a standalone program, and that is the whole interface:
 
 ```
 solver [reps] [threads] < puzzles.txt
 ```
 
-- stdin: one puzzle per line, 81 characters `0`-`9` (`0` = empty)
-- stdout: one line per puzzle — the 81-digit solution or `UNSOLVED`
-- stderr: one line `ns=<nanoseconds>` for the solve loop only
+- **stdin**: one puzzle per line, 81 characters `0`-`9` (`0` = empty)
+- **stdout**: one line per puzzle — the 81-digit solution, or `UNSOLVED`
+- **stderr**: one line `ns=<nanoseconds>`, covering the solve loop only
 
-Run the benchmark: `python3 bench/run.py`
+Puzzles are read and parsed before the clock starts, so interpreter startup and
+I/O stay out of the measurement. `reps` repeats the solve loop — the harness
+calibrates it so every measured loop runs at least a second, which is what makes
+a 3 µs solver and a 3 s solver comparable on the same axis.
+
+## Running it
+
+```
+python3 bench/run.py                 # build, verify, benchmark, regenerate this README
+python3 bench/run.py --verify        # correctness only
+python3 bench/run.py --lang rust --algo mrv --set hard
+tools/crosscheck.sh                  # every implementation vs. reference solutions, all 207 puzzles
+```
+
+Implementations that fail verification are excluded from the benchmark rather
+than silently reported — a fast wrong answer is not a result.
+
+## Correctness
+
+Two gates, and both must hold before any timing is published. Every solver is
+checked against known-unique reference solutions; and because `rules` never
+guesses, its output is fully determined by its technique set, so all seven
+languages must leave *exactly* the same puzzles unsolved. They do — byte for
+byte.
 
 <!-- BENCH:BEGIN -->
 

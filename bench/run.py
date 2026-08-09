@@ -9,7 +9,8 @@ ALGOS = ['naive', 'mrv', 'norvig', 'dlx', 'rules', 'mrv_mt']
 LANGS = ['python', 'javascript', 'go', 'rust',
          'cpp-gcc', 'cpp-clang', 'c-gcc', 'c-clang', 'asm']
 SETS = ['easy', 'medium', 'hard', 'extreme']
-SET_TIMEOUT = 60           # seconds per (impl, set) run
+SET_TIMEOUT = 60           # seconds per (impl, set) benchmark run
+VERIFY_TIMEOUT = 300       # generous: naive on an extreme puzzle is legitimately slow
 TARGET_NS = 1_000_000_000  # calibrate reps until the solve loop takes >= 1s
 
 
@@ -81,7 +82,7 @@ def verify(impls):
     for lang, algo, cmd in impls:
         name = f'{lang}/{algo}'
         try:
-            lines, _ = run_solver(cmd, puzzles)
+            lines, _ = run_solver(cmd, puzzles, timeout=VERIFY_TIMEOUT)
         except (RuntimeError, subprocess.TimeoutExpired) as e:
             print(f'FAIL {name}: {e}')
             failed.append(name)
