@@ -5,7 +5,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ALGOS = ['naive', 'mrv', 'norvig', 'dlx', 'rules', 'mrv_mt']
-LANGS = ['python', 'javascript', 'go', 'rust', 'cpp', 'c', 'asm']
+LANGS = ['python', 'javascript', 'go', 'rust',
+         'cpp-gcc', 'cpp-clang', 'c-gcc', 'c-clang', 'asm']
 SETS = ['easy', 'medium', 'hard', 'extreme']
 SET_TIMEOUT = 60           # seconds per (impl, set) run
 TARGET_NS = 1_000_000_000  # calibrate reps until the solve loop takes >= 1s

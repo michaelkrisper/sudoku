@@ -29,6 +29,12 @@ Python (CPython), JavaScript (Node), Go, Rust, C++, C, x86-64 Assembly
 (NASM, Linux-Syscalls; Zielmaschine MacBook Pro 11,1 = Haswell, AVX2/BMI
 verfügbar).
 
+C und C++ werden mit **beiden** Compilern gebaut und getrennt ausgewiesen —
+Harness-Keys `c-gcc`, `c-clang`, `cpp-gcc`, `cpp-clang`. Identischer
+Quelltext, identische Flags; der Vergleich misst die Codegenerierung.
+Damit ergeben sich 9 Sprach-Varianten × 6 Algorithmen = 54 Messpunkte aus
+42 Quelldateien.
+
 Performance-Vorgaben:
 - C/C++/Rust: `-O3 -march=native -flto` (Rust: `opt-level=3`, `lto=true`, `target-cpu=native`).
 - Assembly: Bitmasken in Registern, `tzcnt`/`popcnt`, minimale Speicherzugriffe.
@@ -105,8 +111,8 @@ sudoku/
 │   ├── javascript/*.js
 │   ├── go/*.go
 │   ├── rust/               # ein Cargo-Workspace, 5 Binaries
-│   ├── cpp/*.cpp
-│   ├── c/*.c
+│   ├── cpp/*.cpp            # je einmal mit g++ und clang++ gebaut
+│   ├── c/*.c                # je einmal mit gcc und clang gebaut
 │   └── asm/*.asm
 ├── bench/run.py             # Build + Verify + Bench + Report + README-Generierung
 ├── assets/                  # generierte Chart-PNGs fürs README
