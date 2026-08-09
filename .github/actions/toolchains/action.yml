@@ -1,0 +1,19 @@
+name: toolchains
+description: Install every compiler and runtime the benchmark builds against.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq nasm clang
+        python3 -m pip install --quiet matplotlib
+
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'

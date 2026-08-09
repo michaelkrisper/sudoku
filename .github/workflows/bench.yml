@@ -1,5 +1,8 @@
 name: benchmark
 
+# Correctness runs on every push; the benchmark itself is deliberately manual.
+# A full measured run takes the better part of an hour, and its numbers are only
+# meaningful when nothing else is competing for the runner.
 on:
   workflow_dispatch:
   push:
@@ -9,31 +12,36 @@ permissions:
   contents: write
 
 jobs:
-  bench:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/toolchains
+      - name: Verify every implementation
+        run: python3 bench/run.py --verify
+      - name: Check the I/O contract edge cases
+        run: tools/contract_test.sh
+      - name: Check every implementation against reference solutions
+        run: TIMEOUT=60 tools/crosscheck.sh easy medium
 
-      - name: Install toolchains
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq nasm clang
-          python3 -m pip install --quiet matplotlib
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: stable
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+  bench:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/toolchains
 
       - name: Record runner hardware
         run: |
           grep -m1 'model name' /proc/cpuinfo
-          nproc
+          echo "cores: $(nproc)"
           gcc --version | head -1
           clang --version | head -1
+          go version
+          rustc --version
+          node --version
+          nasm -v
 
       - name: Build and benchmark
         run: |
@@ -45,14 +53,13 @@ jobs:
         with:
           name: benchmark-results
           path: |
-            results/*.json
+            results/github-runner.json
             assets/*.png
 
-      - name: Commit results (manual runs only)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Commit results
         run: |
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add README.md assets results
+          git add README.md assets results/github-runner.json
           git diff --quiet --cached || git commit -m "Benchmark results from GitHub runner"
           git push
