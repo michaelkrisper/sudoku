@@ -77,6 +77,11 @@ ein Timeout (default 60 s für den ganzen Lauf); Überschreitung = DNF.
 4. **Report:** Text-Tabelle auf stdout (µs/Puzzle Median über Sets,
    Puzzles/s, Lösungsquote); Rohdaten als JSON nach
    `results/<timestamp>.json`.
+5. **README:** generiert aus dem JSON die Ergebnis-Sektion des README:
+   Markdown-Tabellen plus Chart-PNGs (matplotlib) nach `assets/` —
+   Zeit pro Algorithmus×Sprache (log-Skala, die Spanne beträgt mehrere
+   Größenordnungen) und Lösungsquote für `rules`. Nur der Harness
+   visualisiert; die 35 Solver selbst bleiben beim minimalen I/O-Vertrag.
 
 CLI: `bench/run.py [--lang ...] [--algo ...] [--set ...]` zum Filtern.
 
@@ -95,7 +100,8 @@ sudoku/
 │   ├── cpp/*.cpp
 │   ├── c/*.c
 │   └── asm/*.asm
-├── bench/run.py             # Build + Verify + Bench + Report
+├── bench/run.py             # Build + Verify + Bench + Report + README-Generierung
+├── assets/                  # generierte Chart-PNGs fürs README
 └── results/                 # Roh-JSON pro Lauf (gitignored bis auf Beispiele)
 ```
 
@@ -119,6 +125,5 @@ Jede Phase endet mit grünem Verify und einem Commit.
 
 ## Nicht-Ziele (bewusst weggelassen)
 
-- Charts/Visualisierung, README-Generierung (später nachrüstbar — Roh-JSON bleibt erhalten).
 - GUI, Puzzle-Generator, Schwierigkeitsbewertung.
 - Multithreading: alle Solver sind single-threaded, damit der Algorithmen-Vergleich sauber bleibt.
