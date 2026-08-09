@@ -28,6 +28,41 @@ extern stdin, stdout, stderr
 %%skip:
 %endmacro
 
+; Branchless: bitmask over the 9 positions of unit %2 that still allow
+; digit %3. Six uops per cell and no unpredictable branch, which is what
+; the equivalent test/jz loop costs most of its time on.
+%macro POSMASK9 3                   ; %1 dest(32, not eax), %2 unit ptr(64), %3 digit(32)
+    xor     %1, %1
+%assign pm_k 0
+%rep 9
+    movzx   eax, byte [%2 + pm_k]
+    movzx   eax, word [cand + rax*2]
+    shrx    eax, eax, %3
+    and     eax, 1
+  %if pm_k > 0
+    shl     eax, pm_k
+  %endif
+    or      %1, eax
+%assign pm_k pm_k+1
+%endrep
+%endmacro
+
+; Same idea for a fish base line: rsi walks the 9 cells with stride %2.
+%macro LINEMASK9 2                  ; %1 dest(32, not eax), %2 stride in bytes
+    xor     %1, %1
+%assign lm_k 0
+%rep 9
+    movzx   eax, word [rsi + lm_k*%2]
+    shrx    eax, eax, r13d
+    and     eax, 1
+  %if lm_k > 0
+    shl     eax, lm_k
+  %endif
+    or      %1, eax
+%assign lm_k lm_k+1
+%endrep
+%endmacro
+
 section .bss
 align 32
 UNITS:  resb 27 * 9                 ; 9 rows, 9 cols, 9 boxes
@@ -195,24 +230,13 @@ hidden_singles:
     mov     ecx, edx
     mov     ebp, 1
     shl     ebp, cl                         ; bit
-    xor     esi, esi                        ; cnt
-    xor     edi, edi                        ; last
-    xor     ecx, ecx                        ; k
-.kloop:
-    movzx   eax, byte [r13 + rcx]
-    movzx   r8d, word [cand + rax*2]
-    test    r8d, ebp
-    jz      .knext
-    inc     esi
-    mov     edi, eax
-.knext:
-    inc     ecx
-    cmp     ecx, 9
-    jb      .kloop
+    POSMASK9 esi, r13, edx
     test    esi, esi
     jz      .set_bad                        ; digit has nowhere to go
-    cmp     esi, 1
-    jne     .dnext
+    blsr    eax, esi
+    jnz     .dnext                          ; two or more places
+    tzcnt   eax, esi
+    movzx   edi, byte [r13 + rax]           ; last
     cmp     word [cand + rdi*2], bp
     je      .dnext
     mov     [cand + rdi*2], bp
@@ -253,15 +277,15 @@ naked_pairs:
     lea     r13, [UNITS + rbx + rbx*8]
     xor     r14d, r14d                      ; a
 .aloop:
+    movzx   eax, byte [r13 + r14]
+    movzx   ebp, word [cand + rax*2]        ; m; the strips below never
+    popcnt  ecx, ebp                        ; touch cell a, so it is loop
+    cmp     ecx, 2                          ; invariant over b
+    jne     .anext
     lea     r15d, [r14 + 1]                 ; b
 .bloop:
     cmp     r15d, 9
     jae     .anext
-    movzx   eax, byte [r13 + r14]
-    movzx   ebp, word [cand + rax*2]        ; m
-    popcnt  ecx, ebp
-    cmp     ecx, 2
-    jne     .bnext
     movzx   eax, byte [r13 + r15]
     cmp     word [cand + rax*2], bp
     jne     .bnext
@@ -321,21 +345,7 @@ hidden_pairs:
     xor     r14d, r14d                      ; n
     mov     edx, 1                          ; d
 .dloop:
-    mov     ecx, edx
-    mov     edi, 1
-    shl     edi, cl                         ; bit
-    xor     esi, esi                        ; p
-    xor     ecx, ecx                        ; k
-.kloop:
-    movzx   eax, byte [r13 + rcx]
-    movzx   eax, word [cand + rax*2]
-    test    eax, edi
-    jz      .knext
-    bts     esi, ecx
-.knext:
-    inc     ecx
-    cmp     ecx, 9
-    jb      .kloop
+    POSMASK9 esi, r13, edx                  ; p
     mov     [rsp + rdx*2], si               ; pos[d]
     popcnt  eax, esi
     cmp     eax, 2
@@ -526,11 +536,11 @@ pointing_and_boxline:
 .k2loop:
     movzx   eax, byte [r10 + rcx]
     movzx   edx, word [cand + rax*2]
-    test    edx, ebp
-    jz      .k2next
-    movzx   edx, byte [BOX_OF + rax]
-    bts     r15d, edx
-.k2next:
+    shrx    edx, edx, r14d
+    and     edx, 1
+    movzx   esi, byte [BOX_OF + rax]
+    shlx    edx, edx, esi
+    or      r15d, edx
     inc     ecx
     cmp     ecx, 9
     jb      .k2loop
@@ -654,26 +664,16 @@ fish:
     xor     r14d, r14d                      ; nb
     xor     ebx, ebx                        ; li
 .li_loop:
-    xor     ebp, ebp                        ; ps
-    xor     ecx, ecx                        ; k
-.kloop:
     cmp     dword [rsp + 84], 0
-    jne     .k_col
-    lea     eax, [rbx + rbx*8]
-    add     eax, ecx                        ; i = li*9 + k
-    jmp     .k_have
-.k_col:
-    lea     eax, [rcx + rcx*8]
-    add     eax, ebx                        ; i = k*9 + li
-.k_have:
-    movzx   eax, word [cand + rax*2]
-    test    eax, r15d
-    jz      .knext
-    bts     ebp, ecx
-.knext:
-    inc     ecx
-    cmp     ecx, 9
-    jb      .kloop
+    jne     .li_col
+    lea     rax, [rbx + rbx*8]              ; cells li*9 + k, stride 1
+    lea     rsi, [cand + rax*2]
+    LINEMASK9 ebp, 2
+    jmp     .li_have
+.li_col:
+    lea     rsi, [cand + rbx*2]             ; cells k*9 + li, stride 9
+    LINEMASK9 ebp, 18
+.li_have:
     popcnt  eax, ebp
     cmp     eax, 2
     jb      .li_next
