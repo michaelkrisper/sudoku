@@ -30,8 +30,10 @@ a 3 µs solver and a 3 s solver comparable on the same axis.
 ```
 python3 bench/run.py                 # build, verify, benchmark, regenerate this README
 python3 bench/run.py --verify        # correctness only
+python3 bench/run.py --no-cost       # timings only, skip size/startup/memory
 python3 bench/run.py --lang rust --algo mrv --set hard
 tools/crosscheck.sh                  # every implementation vs. reference solutions, all 207 puzzles
+tools/contract_test.sh               # the I/O contract's edge cases
 ```
 
 Implementations that fail verification are excluded from the benchmark rather

@@ -146,6 +146,14 @@ def bench(impls, sets):
     return runs
 
 
+def langs_of(impls):
+    seen = []
+    for lang, _, _ in impls:
+        if lang not in seen:
+            seen.append(lang)
+    return seen
+
+
 def cpu_model():
     try:
         for line in open('/proc/cpuinfo'):
@@ -164,6 +172,10 @@ def main():
     ap.add_argument('--set', action='append', choices=SETS)
     ap.add_argument('--readme', metavar='RESULTS.json',
                     help='regenerate the README section from an existing run')
+    ap.add_argument('--no-cost', action='store_true',
+                    help='skip size, startup and memory measurements')
+    ap.add_argument('--cost-only', metavar='RESULTS.json',
+                    help='measure size, startup and memory into an existing run')
     args = ap.parse_args()
 
     if args.readme:
@@ -178,6 +190,16 @@ def main():
     if not impls:
         sys.exit('no implementations found')
 
+    if args.cost_only:
+        import cost, report
+        path = Path(args.cost_only)
+        data = json.loads(path.read_text())
+        data['cost'], data['languages'] = cost.collect(impls, langs_of(impls))
+        path.write_text(json.dumps(data, indent=1))
+        report.build(path)
+        print(f'{path} updated, README regenerated')
+        return
+
     good, failed = verify(impls)
     if args.verify:
         sys.exit(1 if failed else 0)
@@ -185,10 +207,19 @@ def main():
         sys.exit('nothing to benchmark')
 
     runs = bench(good, args.set or SETS)
+
+    cost_rows, lang_rows = [], []
+    if not args.no_cost:
+        import cost
+        print()
+        # After the timings: a clean build resets build/ and would invalidate
+        # the binaries the benchmark just measured.
+        cost_rows, lang_rows = cost.collect(good, langs_of(good))
+
     out = {'meta': {'host': platform.node(), 'cpu': cpu_model(),
                     'cores': os.cpu_count(),
                     'date': time.strftime('%Y-%m-%d %H:%M:%S')},
-           'runs': runs}
+           'runs': runs, 'cost': cost_rows, 'languages': lang_rows}
     path = ROOT / 'results' / f'{int(time.time())}.json'
     path.write_text(json.dumps(out, indent=1))
     print(f'raw results: {path.relative_to(ROOT)}')

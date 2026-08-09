@@ -101,7 +101,14 @@ ein Timeout (default 60 s für den ganzen Lauf); Überschreitung = DNF.
 4. **Report:** Text-Tabelle auf stdout (µs/Puzzle Median über Sets,
    Puzzles/s, Lösungsquote); Rohdaten als JSON nach
    `results/<timestamp>.json`.
-5. **README:** generiert aus dem JSON die Ergebnis-Sektion des README:
+5. **Kosten:** nach den Timings misst `bench/cost.py` je Implementierung
+   Artefaktgröße (Binary bzw. ausgelieferter Quelltext, plus gestrippt),
+   Startzeit und Resident Memory bei leerer Eingabe sowie Peak-RSS beim
+   Lösen des `hard`-Sets; je Sprache Quellzeilen, Toolchain-Version und
+   die Dauer eines Clean-Builds. Läuft bewusst *nach* der Messung, weil
+   der Clean-Build die gerade vermessenen Binaries ersetzt.
+   `--no-cost` überspringt das, `--cost-only <json>` misst nur nach.
+6. **README:** generiert aus dem JSON die Ergebnis-Sektion des README:
    Markdown-Tabellen plus Chart-PNGs (matplotlib) nach `assets/` —
    Zeit pro Algorithmus×Sprache (log-Skala, die Spanne beträgt mehrere
    Größenordnungen) und Lösungsquote für `rules`. Nur der Harness

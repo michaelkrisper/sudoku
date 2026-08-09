@@ -223,6 +223,73 @@ def findings(by, langs, algos, sets):
             'so the solvers that win on `hard` do not win on `extreme`.', '']
 
 
+def kb(n):
+    if n is None:
+        return '&mdash;'
+    return f'{n / 1024 / 1024:,.1f} MB' if n >= 1024 * 1024 else f'{n / 1024:,.0f} KB'
+
+
+def mb(kilobytes):
+    return '&mdash;' if kilobytes is None else f'{kilobytes / 1024:,.1f}'
+
+
+def cost_section(data, langs, algos, by):
+    """Size, startup and memory — the costs a throughput number hides."""
+    cost = {(c['lang'], c['algo']): c for c in data.get('cost', [])}
+    langinfo = {l['lang']: l for l in data.get('languages', [])}
+    if not cost:
+        return []
+
+    out = ['### What it costs before it solves anything', '']
+    rows = ['| language | artifact | stripped | startup | resident at startup | source lines | clean build |',
+            '|---|---|---|---|---|---|---|']
+    for lang in langs:
+        c = cost.get((lang, 'mrv')) or next(
+            (v for (l, _), v in cost.items() if l == lang), None)
+        if not c:
+            continue
+        info = langinfo.get(lang, {})
+        build = info.get('build_s')
+        rows.append(
+            f"| `{lang}` | {kb(c['artifact_bytes'])} | {kb(c['stripped_bytes'])} | "
+            f"{c['startup_ms']:.1f} ms | {mb(c['startup_rss_kb'])} MB | "
+            f"{info.get('source_lines', '&mdash;'):,} | "
+            f"{f'{build:.1f} s' if build is not None else '&mdash;'} |")
+    out += rows + ['']
+
+    # Startup measured against the thing it is charged to: one solved puzzle.
+    ref = next((l for l in ('c-clang', 'c-gcc', 'asm') if l in langs), None)
+    if ref:
+        r = by.get((ref, 'mrv', 'easy'))
+        c = cost.get((ref, 'mrv'))
+        if r and c and r.get('status') == 'ok':
+            factor = c['startup_ms'] * 1000 / r['us_per_puzzle']
+            out += [f"For scale: starting `{ref}` costs {c['startup_ms']:.1f} ms, "
+                    f"about {factor:,.0f}× what it then takes to solve an easy "
+                    f"puzzle. Every measurement in the tables above excludes "
+                    f"this, deliberately — but you pay it on every invocation.",
+                    '']
+
+    out += ['**Peak memory while solving the hard set, MB**', '',
+            '| language | ' + ' | '.join(algos) + ' |',
+            '|---' * (len(algos) + 1) + '|']
+    for lang in langs:
+        cells = [mb((cost.get((lang, a)) or {}).get('peak_rss_kb')) for a in algos]
+        out.append(f'| `{lang}` | ' + ' | '.join(cells) + ' |')
+    out += ['',
+            'The algorithms differ by kilobytes — even `dlx`, which builds a '
+            '324-column exact-cover matrix, needs well under a megabyte. What '
+            'the column actually measures is the runtime underneath it. '
+            'Choosing the language decides the memory footprint here; choosing '
+            'the algorithm decides the time.', '']
+
+    tc = [(l, langinfo[l]['toolchain']) for l in langs
+          if langinfo.get(l, {}).get('toolchain')]
+    if tc:
+        out += ['Built with: ' + '; '.join(f'{l} {t}' for l, t in tc) + '.', '']
+    return out
+
+
 def picture(name, alt):
     return (f'<picture>\n'
             f'  <source media="(prefers-color-scheme: dark)" srcset="assets/{name}_dark.png">\n'
@@ -296,6 +363,7 @@ def build(results_path):
         parts += ['### Multithreading', '',
                   picture('mt_speedup', 'Multithreaded speedup by language'), '']
 
+    parts += cost_section(data, langs, algos, by)
     parts += findings(by, langs, algos, sets)
     section = '\n'.join(parts).rstrip() + '\n'
     readme = (ROOT / 'README.md').read_text()

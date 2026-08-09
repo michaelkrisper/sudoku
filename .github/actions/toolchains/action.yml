@@ -7,7 +7,7 @@ runs:
     - shell: bash
       run: |
         sudo apt-get update -qq
-        sudo apt-get install -y -qq nasm clang
+        sudo apt-get install -y -qq nasm clang time   # `time` for the cost measurements
         python3 -m pip install --quiet matplotlib
 
     - uses: actions/setup-go@v5
