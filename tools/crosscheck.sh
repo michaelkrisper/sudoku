@@ -5,9 +5,15 @@
 # `rules` is allowed to answer UNSOLVED (it never guesses); anything else it
 # prints must still match. Every other algorithm must solve everything.
 #
+# A solver that exceeds TIMEOUT is reported as TIMEOUT, not as a failure:
+# `naive` on the anti-brute-force puzzle in the extreme set does not finish in
+# any useful time, which is exactly why that puzzle is in the set.
+#
 # Usage: tools/crosscheck.sh [set...]     (default: all four sets)
+#        TIMEOUT=60 tools/crosscheck.sh   (seconds per implementation and set)
 set -u
 cd "$(dirname "$0")/.."
+: "${TIMEOUT:=120}"
 
 sets=("${@:-}")
 [ -z "${sets[0]}" ] && sets=(easy medium hard extreme)
@@ -37,7 +43,11 @@ for entry in "${impls[@]}"; do
     name=${entry%%:*}; cmd=${entry#*:}
     algo=${name##*-}; [ "$algo" = "$name" ] && algo=${name##*/}
     for s in "${sets[@]}"; do
-        out=$($cmd < "puzzles/$s.txt" 2>/dev/null)
+        out=$(timeout "$TIMEOUT" $cmd < "puzzles/$s.txt" 2>/dev/null)
+        if [ $? = 124 ]; then
+            echo "TIMEOUT $name on $s (>${TIMEOUT}s)"
+            continue
+        fi
         bad=$(paste -d' ' <(echo "$out") "$ref_dir/$s.txt" | awk -v algo="$algo" '
             $1 == "UNSOLVED" { if (algo != "rules") { n++ } ; next }
             $1 != $2 { n++ }

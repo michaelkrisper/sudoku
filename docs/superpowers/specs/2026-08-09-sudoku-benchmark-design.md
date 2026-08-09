@@ -86,6 +86,12 @@ ein Timeout (default 60 s für den ganzen Lauf); Überschreitung = DNF.
    vergleicht mit `verify_solutions.txt`. `rules` darf `UNSOLVED`
    liefern, aber nie eine abweichende Lösung. Fehlschlag ⇒
    Implementierung wird im Benchmark als FAIL markiert, nicht gemessen.
+   Zwei ergänzende Prüfungen laufen separat (nicht bei jedem Benchmark,
+   weil sie Minuten dauern): `tools/crosscheck.sh` misst jede
+   Implementierung an den Referenzlösungen aller 207 Puzzles,
+   `tools/contract_test.sh` prüft die Ränder des I/O-Vertrags
+   (Kommentar-/Leerzeilen, leere Eingabe, widersprüchliche Puzzles,
+   Argumentbehandlung, Form der `ns=`-Zeile).
 3. **Bench:** pro (Implementierung, Set): reps kalibrieren, laufen
    lassen, `ns=` einlesen, Lösungen erneut verifizieren. `mrv_mt` läuft
    mit `threads` = Anzahl CPU-Kerne. Der Harness löscht beim Start
@@ -108,19 +114,26 @@ CLI: `bench/run.py [--lang ...] [--algo ...] [--set ...]` zum Filtern.
 ```
 sudoku/
 ├── Makefile                 # baut alle kompilierten Implementierungen
-├── algorithms.md            # Beschreibung der 5 Algorithmen
+├── algorithms.md            # Beschreibung der 6 Algorithmen
 ├── puzzles/                 # Puzzle-Sets (s.o.)
 ├── impl/
-│   ├── python/{naive,mrv,norvig,dlx,rules,mrv_mt}.py
+│   ├── python/{naive,mrv,norvig,dlx,rules,mrv_mt}.py + _contract.py
 │   ├── javascript/*.js
-│   ├── go/*.go
-│   ├── rust/               # ein Cargo-Workspace, 5 Binaries
+│   ├── go/*.go              # je eine eigenständige main-Datei
+│   ├── rust/                # ein Cargo-Projekt, 6 Binaries + src/lib.rs
 │   ├── cpp/*.cpp            # je einmal mit g++ und clang++ gebaut
 │   ├── c/*.c                # je einmal mit gcc und clang gebaut
-│   └── asm/*.asm
-├── bench/run.py             # Build + Verify + Bench + Report + README-Generierung
+│   └── asm/*.asm            # NASM, gegen libc gelinkt
+├── bench/
+│   ├── run.py               # Build + Verify + Bench
+│   └── report.py            # Tabellen, Charts, README-Generierung
+├── tools/
+│   ├── normalize.py         # Fremdformate -> 81-Zeichen-Zeilen
+│   ├── validate_puzzles.py  # Gültigkeit + Eindeutigkeit + Referenzlösungen
+│   ├── crosscheck.sh        # alle Implementierungen gegen alle 207 Puzzles
+│   └── contract_test.sh     # I/O-Vertrag in Randfällen
 ├── assets/                  # generierte Chart-PNGs fürs README
-└── results/                 # Roh-JSON pro Lauf (gitignored bis auf Beispiele)
+└── results/                 # Roh-JSON pro Lauf (gitignored bis auf github-runner.json)
 ```
 
 Das alte `SudokuSolver.ipynb` wird gelöscht (bleibt in der Git-History).
