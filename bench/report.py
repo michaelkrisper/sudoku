@@ -196,8 +196,13 @@ def findings(by, langs, algos, sets):
     rows = []
     for a in algos:
         e, h = by.get((ref, a, 'easy')), by.get((ref, a, 'hard'))
-        if e and h and e.get('status') == 'ok' and h.get('status') == 'ok':
-            rows.append((a, e['us_per_puzzle'], h['us_per_puzzle']))
+        if not (e and h and e.get('status') == 'ok' and h.get('status') == 'ok'):
+            continue
+        # Only comparable where the work is the same on both sets. `rules`
+        # abandons the puzzles it cannot deduce, so its ratio would flatter it.
+        if e['solved'] < e['puzzles'] or h['solved'] < h['puzzles']:
+            continue
+        rows.append((a, e['us_per_puzzle'], h['us_per_puzzle']))
     if len(rows) < 2:
         return []
     rows.sort(key=lambda r: r[2] / r[1], reverse=True)
