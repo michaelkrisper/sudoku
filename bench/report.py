@@ -56,11 +56,21 @@ def cell(r):
 
 
 def table_for_set(by, langs, algos, set_name):
+    """One table per puzzle set; the fastest language per algorithm is bold."""
+    best = {}
+    for a in algos:
+        timed = [(r['us_per_puzzle'], r['lang']) for lang in langs
+                 if (r := by.get((lang, a, set_name))) and r.get('status') == 'ok']
+        if timed:
+            best[a] = min(timed)[1]
     head = '| language | ' + ' | '.join(algos) + ' |'
     sep = '|---' * (len(algos) + 1) + '|'
     rows = []
     for lang in langs:
-        cells = [cell(by.get((lang, a, set_name))) for a in algos]
+        cells = []
+        for a in algos:
+            text = cell(by.get((lang, a, set_name)))
+            cells.append(f'**{text}**' if best.get(a) == lang else text)
         rows.append(f'| `{lang}` | ' + ' | '.join(cells) + ' |')
     return '\n'.join([head, sep] + rows)
 
@@ -72,6 +82,21 @@ def human(us):
     if us >= 1:
         return f'{us:.0f} µs'
     return f'{us:.2f} µs'
+
+
+def rules_note(runs, set_name):
+    """Without this, the rules column reads as the fastest solver on the hard
+    sets, when in fact it is the one that gives up."""
+    rs = [r for r in runs if r['algo'] == 'rules' and r['set'] == set_name
+          and r.get('status') == 'ok']
+    if not rs:
+        return ''
+    solved, total = rs[0]['solved'], rs[0]['puzzles']
+    if solved == total:
+        return f'`rules` solved all {total} puzzles of this set by logic alone.'
+    return (f'`rules` solved {solved} of {total} puzzles here and gave up on the '
+            f'rest, so its column covers less work than the others — it is not '
+            f'faster, it is doing less.')
 
 
 def style(ax, th):
@@ -162,6 +187,37 @@ def chart_bars(pairs, title, xlabel, theme, path, fmt='{:.2f}'):
     plt.close(fig)
 
 
+def findings(by, langs, algos, sets):
+    """The ratio between an easy and a hard set says more about an algorithm
+    than either number alone, so state it explicitly."""
+    if not {'easy', 'hard'} <= set(sets):
+        return []
+    ref = 'cpp-gcc' if 'cpp-gcc' in langs else langs[-1]
+    rows = []
+    for a in algos:
+        e, h = by.get((ref, a, 'easy')), by.get((ref, a, 'hard'))
+        if e and h and e.get('status') == 'ok' and h.get('status') == 'ok':
+            rows.append((a, e['us_per_puzzle'], h['us_per_puzzle']))
+    if len(rows) < 2:
+        return []
+    rows.sort(key=lambda r: r[2] / r[1], reverse=True)
+    table = ['| algorithm | easy | hard | factor |', '|---|---|---|---|']
+    table += [f'| `{a}` | {e:,.1f} | {h:,.1f} | {h / e:,.1f}× |' for a, e, h in rows]
+    return ['### How the algorithms scale with difficulty', '',
+            f'Time per puzzle in `{ref}`, and how much of it the hard set costs:',
+            '', *table, '',
+            'The ranking is not a property of the algorithms — it is a function '
+            'of how hard the input is. Constraint propagation carries a high '
+            'fixed cost per assignment and spends it whether or not there is a '
+            'search tree to prune, which makes it the slowest choice on easy '
+            'puzzles and a good one where the search actually explodes. Plain '
+            'MRV is the opposite: almost free per cell, but it pays the full '
+            'price of every branch it has to take.', '',
+            'Note also that `extreme` here is not the hardest set for a machine. '
+            'Those puzzles are hard for *humans*; their search trees are shallow, '
+            'so the solvers that win on `hard` do not win on `extreme`.', '']
+
+
 def picture(name, alt):
     return (f'<picture>\n'
             f'  <source media="(prefers-color-scheme: dark)" srcset="assets/{name}_dark.png">\n'
@@ -191,11 +247,12 @@ def build(results_path):
 
     for s in sets:
         body = table_for_set(by, langs, algos, s)
+        note = rules_note(runs, s)
         if s == headline:
-            parts += [f'### {s} set (µs per puzzle)', '', body, '']
+            parts += [f'### {s} set (µs per puzzle)', '', body, '', note, '']
         else:
             parts += [f'<details><summary>{s} set (µs per puzzle)</summary>',
-                      '', body, '', '</details>', '']
+                      '', body, '', note, '', '</details>', '']
 
     chart_by_impl(by, langs, algos, headline, 'light',
                   ASSETS / 'time_by_impl_light.png')
@@ -234,6 +291,7 @@ def build(results_path):
         parts += ['### Multithreading', '',
                   picture('mt_speedup', 'Multithreaded speedup by language'), '']
 
+    parts += findings(by, langs, algos, sets)
     section = '\n'.join(parts).rstrip() + '\n'
     readme = (ROOT / 'README.md').read_text()
     pre, rest = readme.split(BEGIN, 1)
