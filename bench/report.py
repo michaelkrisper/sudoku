@@ -65,6 +65,15 @@ def table_for_set(by, langs, algos, set_name):
     return '\n'.join([head, sep] + rows)
 
 
+def human(us):
+    """Readable microsecond label — the axis is log, the labels should not be."""
+    if us >= 1000:
+        return f'{us / 1000:,.0f} ms'
+    if us >= 1:
+        return f'{us:.0f} µs'
+    return f'{us:.2f} µs'
+
+
 def style(ax, th):
     ax.set_facecolor(th['surface'])
     ax.tick_params(colors=th['muted'], labelsize=8, length=0)
@@ -82,8 +91,10 @@ def chart_by_impl(by, langs, algos, set_name, theme, path):
     """
     th = THEMES[theme]
     n = len(algos)
+    # sharex matters: with per-panel ranges the same dot position would mean a
+    # different number in every panel, and the panels are meant to be compared.
     fig, axes = plt.subplots(1, n, figsize=(2.35 * n, 0.42 * len(langs) + 1.9),
-                             sharey=True)
+                             sharey=True, sharex=True)
     fig.patch.set_facecolor(th['surface'])
     axes = [axes] if n == 1 else list(axes)
     ys = range(len(langs))
@@ -106,7 +117,7 @@ def chart_by_impl(by, langs, algos, set_name, theme, path):
             fast = min(pts, key=lambda p: p[1])
             slow = max(pts, key=lambda p: p[1])
             for y, v in {fast, slow}:
-                ax.annotate(f'{v:,.3g}', (v, y), textcoords='offset points',
+                ax.annotate(human(v), (v, y), textcoords='offset points',
                             xytext=(0, 8), ha='center', fontsize=7,
                             color=th['muted'])
         for y, lab in zip(ys, labels):
