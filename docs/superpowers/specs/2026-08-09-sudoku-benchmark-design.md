@@ -19,7 +19,7 @@ kommen aus GitHub Actions; lokale Läufe dienen der Entwicklung.
 | `naive`  | Backtracking, erste leere Zelle, Ziffern 1–9 der Reihe nach. Baseline (entspricht dem alten Notebook). |
 | `mrv`    | Backtracking mit Bitmasken-Kandidaten (27 Masken: 9 Zeilen, 9 Spalten, 9 Boxen) und Most-Constrained-Cell-Auswahl (wenigste Kandidaten zuerst, `popcnt`/`tzcnt`). |
 | `norvig` | Constraint Propagation nach Peter Norvig: Elimination + Naked Singles als Fixpunkt-Iteration, dann Suche mit MRV. |
-| `dlx`    | Knuths Algorithm X mit Dancing Links; Sudoku als Exact-Cover-Matrix (729 Zeilen × 324 Spalten). |
+| `dlx`    | Knuths Algorithm X mit Dancing Links; Sudoku als Exact-Cover-Matrix (729 Zeilen × 324 Spalten). Kanonische Form für **alle** Sprachen: die Matrix wird einmalig beim Start gebaut, pro Puzzle werden nur die veränderlichen Link-Arrays (L/R/U/D/size) kopiert und die Clue-Zeilen gecovert. |
 | `rules`  | Rein regelbasiert, ohne Raten: Naked/Hidden Singles, Naked/Hidden Pairs, Pointing Pairs, Box-Line-Reduction, X-Wing, Swordfish. Darf Puzzles ungelöst lassen — die Lösungsquote ist Teil des Ergebnisses. Darf nie eine falsche Lösung liefern. |
 | `mrv_mt` | Multithreading-Variante von `mrv`: Thread-Pool parallelisiert über die Puzzles des Batches (Puzzle-Level-Parallelismus; die Suche selbst bleibt sequenziell). Python: `multiprocessing` (GIL); Assembly: pthreads. Report zeigt Speedup gegenüber `mrv`. |
 

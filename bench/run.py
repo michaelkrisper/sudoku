@@ -3,6 +3,7 @@
 import argparse, ctypes, json, os, platform, statistics, subprocess, sys, time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 ROOT = Path(__file__).resolve().parent.parent
 ALGOS = ['naive', 'mrv', 'norvig', 'dlx', 'rules', 'mrv_mt']
 LANGS = ['python', 'javascript', 'go', 'rust',
@@ -143,7 +144,14 @@ def main():
     ap.add_argument('--lang', action='append', choices=LANGS)
     ap.add_argument('--algo', action='append', choices=ALGOS)
     ap.add_argument('--set', action='append', choices=SETS)
+    ap.add_argument('--readme', metavar='RESULTS.json',
+                    help='regenerate the README section from an existing run')
     args = ap.parse_args()
+
+    if args.readme:
+        import report
+        print(f'README updated from {args.readme} ({report.build(args.readme)} runs)')
+        return
 
     clear_thp_disable()
     subprocess.run(['make', '-s'], cwd=ROOT, check=True)
@@ -165,6 +173,10 @@ def main():
     path = ROOT / 'results' / f'{int(time.time())}.json'
     path.write_text(json.dumps(out, indent=1))
     print(f'raw results: {path.relative_to(ROOT)}')
+
+    import report
+    report.build(path)
+    print('README updated')
     sys.exit(1 if failed else 0)
 
 
