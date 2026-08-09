@@ -181,9 +181,11 @@ def build(results_path):
     headline = 'hard' if 'hard' in sets else sets[-1]
     parts = [
         f"Measured on {meta['cpu']} ({meta['cores']} cores), {meta['date']}. "
-        f"Each number is microseconds per puzzle — median of 3 runs, with the "
-        f"repetition count calibrated so every measured loop runs at least one "
-        f"second. Lower is better; DNF means the 60 s budget for the set ran out.",
+        f"Each number is microseconds per puzzle. The repetition count is "
+        f"calibrated so every measured loop runs at least a second, and the "
+        f"median of three runs is reported — except for solvers already taking "
+        f"over five seconds per pass, which are measured once. Lower is better; "
+        f"DNF means the 60 s budget for that set ran out.",
         '', picture('time_by_impl', f'Time per puzzle by implementation, {headline} set'), '',
     ]
 

@@ -12,6 +12,7 @@ SETS = ['easy', 'medium', 'hard', 'extreme']
 SET_TIMEOUT = 60           # seconds per (impl, set) benchmark run
 VERIFY_TIMEOUT = 300       # generous: naive on an extreme puzzle is legitimately slow
 TARGET_NS = 1_000_000_000  # calibrate reps until the solve loop takes >= 1s
+SINGLE_SAMPLE_NS = 5_000_000_000  # past this per pass, one sample instead of three
 
 
 def clear_thp_disable():
@@ -108,12 +109,16 @@ def bench_one(cmd, set_name, threads):
     n_puzzles = len(load_set(set_name))
     _, ns = run_solver(cmd, text, reps=1, threads=threads)
     reps = max(1, min(10_000, int(TARGET_NS // max(ns, 1))))
+    # A solver already running for many seconds per pass is measured once: the
+    # repeats exist to lift fast solvers out of timer noise, and a slow one is
+    # nowhere near that noise floor.
+    n_samples = 3 if ns < SINGLE_SAMPLE_NS else 1
     samples = []
-    for _ in range(3):
+    for _ in range(n_samples):
         lines, ns = run_solver(cmd, text, reps=reps, threads=threads)
         samples.append(ns)
     ns_med = statistics.median(samples)
-    return {'reps': reps, 'ns_median': ns_med,
+    return {'reps': reps, 'samples': n_samples, 'ns_median': ns_med,
             'us_per_puzzle': ns_med / reps / n_puzzles / 1000,
             'puzzles': n_puzzles,
             'solved': sum(1 for l in lines if l != 'UNSOLVED'),
