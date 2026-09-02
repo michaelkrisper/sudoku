@@ -1,8 +1,25 @@
 // Norvig-style constraint propagation + search (bitmask candidates).
+//
+// The state is kept in two mutually redundant views, which is what makes the
+// hidden-single test cheap:
+//
+//   st[cell]                 which digits may still go in this cell
+//   st[81 + unit * 9 + d]    which positions of `unit` may still hold digit d+1
+//
+// Norvig derives the second from the first on demand, scanning nine cells per
+// unit after every elimination — a data-dependent loop with an early exit.
+// Maintaining it incrementally costs three AND-NOTs per elimination and turns
+// the test into two predicates on a value already in hand: zero is a
+// contradiction, a single set bit is a hidden single.
+//
+// Both views live in one flat array so a search node clones them with a single
+// .set(), the way the C port copies one struct.
 'use strict';
 const fs = require('fs');
 
 const ALL = 0x3FE;                          // bits 1..9 set
+const ALLPOS = 0x1FF;                       // position bits 0..8 set
+const NSTATE = 81 + 27 * 9;                 // cand block, then places block
 
 // UNITS: 27 units x 9 cells (9 rows, 9 cols, 9 boxes)
 const UNITS = new Uint8Array(27 * 9);
@@ -16,8 +33,13 @@ for (let b = 0; b < 9; b++) {
     UNITS[(18 + b) * 9 + j] = (br * 3 + ((j / 3) | 0)) * 9 + bc * 3 + (j % 3);
 }
 
-// UNITS_OF: the 3 unit ids per cell (row, col, box); PEERS: 20 sorted peers
+// UNITS_OF: the 3 unit ids per cell (row, col, box); PEERS: 20 sorted peers.
+// UBASE/PBASE: the same 3 units pre-multiplied into UNITS / places offsets.
+// POSBIT: this cell's position bit within each of its 3 units.
 const UNITS_OF = new Uint8Array(81 * 3);
+const UBASE = new Uint16Array(81 * 3);
+const PBASE = new Uint16Array(81 * 3);
+const POSBIT = new Uint16Array(81 * 3);
 const PEERS = new Uint8Array(81 * 20);
 for (let i = 0; i < 81; i++) {
   const r = (i / 9) | 0, c = i % 9;
@@ -25,6 +47,13 @@ for (let i = 0; i < 81; i++) {
   UNITS_OF[i * 3] = r;
   UNITS_OF[i * 3 + 1] = 9 + c;
   UNITS_OF[i * 3 + 2] = 18 + b;
+  POSBIT[i * 3] = 1 << c;                   // along the row
+  POSBIT[i * 3 + 1] = 1 << r;               // down the column
+  POSBIT[i * 3 + 2] = 1 << ((r % 3) * 3 + c % 3);   // within the box
+  for (let t = 0; t < 3; t++) {
+    UBASE[i * 3 + t] = UNITS_OF[i * 3 + t] * 9;
+    PBASE[i * 3 + t] = 81 + UNITS_OF[i * 3 + t] * 9;
+  }
   let n = 0;
   for (let j = 0; j < 81; j++) {
     if (j === i) continue;
@@ -37,47 +66,63 @@ for (let i = 0; i < 81; i++) {
 const NC = new Uint8Array(1024);            // popcount table
 for (let i = 1; i < 1024; i++) NC[i] = NC[i >> 1] + (i & 1);
 
-const cand0 = new Uint16Array(81);
+const st0 = new Uint16Array(NSTATE);
 const STACK = [];                           // one trial buffer per search depth
-for (let d = 0; d < 82; d++) STACK.push(new Uint16Array(81));
+for (let d = 0; d < 82; d++) STACK.push(new Uint16Array(NSTATE));
 
-function eliminate(cand, i, bit) {
-  let c = cand[i];
+function eliminate(st, i, bit) {
+  let c = st[i];
   if (!(c & bit)) return true;
   c &= ~bit;
   if (c === 0) return false;
-  cand[i] = c;
+  st[i] = c;
+
+  // `bit` can no longer sit at this cell's position in any of its 3 units.
+  const d = 30 - Math.clz32(bit);           // digit index 0..8
+  const t0 = i * 3, t1 = t0 + 1, t2 = t0 + 2;
+  const q0 = PBASE[t0] + d, q1 = PBASE[t1] + d, q2 = PBASE[t2] + d;
+  st[q0] &= ~POSBIT[t0];
+  st[q1] &= ~POSBIT[t1];
+  st[q2] &= ~POSBIT[t2];
+
   if (!(c & (c - 1))) {                     // naked single: strip from peers
     for (let k = i * 20; k < i * 20 + 20; k++) {
       const p = PEERS[k];
-      if ((cand[p] & c) && !eliminate(cand, p, c)) return false;
+      if ((st[p] & c) && !eliminate(st, p, c)) return false;
     }
   }
-  for (let ui = 0; ui < 3; ui++) {          // hidden single for `bit`?
-    const base = UNITS_OF[i * 3 + ui] * 9;
-    let place = -1;
-    for (let j = 0; j < 9; j++) {
-      const cell = UNITS[base + j];
-      if (cand[cell] & bit) {
-        if (place >= 0) { place = -2; break; }
-        place = cell;
-      }
-    }
-    if (place === -1) return false;         // bit has nowhere left in unit
-    if (place >= 0) {
-      const pc = cand[place];
-      if ((pc & (pc - 1)) && !assign(cand, place, bit)) return false;
-    }
+
+  // Re-read: the propagation above may have narrowed these further.
+  let p0 = st[q0];
+  if (p0 === 0) return false;               // bit has nowhere left in unit
+  if (!(p0 & (p0 - 1))) {                   // exactly one place: hidden single
+    const place = UNITS[UBASE[t0] + 31 - Math.clz32(p0)];
+    const pc = st[place];
+    if ((pc & (pc - 1)) && !assign(st, place, bit)) return false;
+  }
+  let p1 = st[q1];
+  if (p1 === 0) return false;
+  if (!(p1 & (p1 - 1))) {
+    const place = UNITS[UBASE[t1] + 31 - Math.clz32(p1)];
+    const pc = st[place];
+    if ((pc & (pc - 1)) && !assign(st, place, bit)) return false;
+  }
+  let p2 = st[q2];
+  if (p2 === 0) return false;
+  if (!(p2 & (p2 - 1))) {
+    const place = UNITS[UBASE[t2] + 31 - Math.clz32(p2)];
+    const pc = st[place];
+    if ((pc & (pc - 1)) && !assign(st, place, bit)) return false;
   }
   return true;
 }
 
-function assign(cand, i, bit) {
-  let other = cand[i] & ~bit;
+function assign(st, i, bit) {
+  let other = st[i] & ~bit;
   while (other) {
     const lb = other & -other;
     other ^= lb;
-    if (!eliminate(cand, i, lb)) return false;
+    if (!eliminate(st, i, lb)) return false;
   }
   return true;
 }
@@ -110,15 +155,16 @@ function search(cand, depth) {
 }
 
 function solve(g) {
-  cand0.fill(ALL);
+  st0.fill(ALL, 0, 81);
+  st0.fill(ALLPOS, 81, NSTATE);
   for (let i = 0; i < 81; i++) {
     const d = g[i];
     if (d) {
       const bit = 1 << d;
-      if (cand0[i] !== bit && !assign(cand0, i, bit)) return false;
+      if (st0[i] !== bit && !assign(st0, i, bit)) return false;
     }
   }
-  const r = search(cand0, 0);
+  const r = search(st0, 0);
   if (r === null) return false;
   for (let i = 0; i < 81; i++) g[i] = 31 - Math.clz32(r[i]);
   return true;
