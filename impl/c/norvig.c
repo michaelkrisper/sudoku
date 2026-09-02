@@ -30,27 +30,36 @@
 #define ALLPOS 0x1FFu /* position bits 0..8 set */
 
 static uint8_t PEERS[81][20];   /* 20 peers per cell */
-static uint8_t UNITS[27][9];    /* 9 rows, 9 cols, 9 boxes */
+static uint8_t UNITS[27 * 9];   /* 9 rows, 9 cols, 9 boxes, flattened */
 static uint8_t UNIT_OF[81][3];  /* the 3 units containing each cell */
 static uint8_t POS_OF[81][3];   /* this cell's index within each of them */
+
+/* Everything eliminate() needs about one (cell, unit) pair, in one word:
+ * the unit's base offset into `places` and `UNITS` in the high half, and the
+ * already-inverted position bit in the low half. Without it the compiler emits
+ * two byte loads, a multiply-by-nine and a variable-count shift per unit —
+ * about a fifth of the function, for three constants known at startup. */
+static uint32_t UPOS[81][3];
+#define UBASE(w) ((w) >> 16)        /* unit * 9 */
+#define UNOTBIT(w) ((uint16_t)(w))  /* ~(1 << position) */
 
 /* One block, so a search node clones both views with a single memcpy. */
 typedef struct {
     uint16_t cand[81];
-    uint16_t places[27][9];     /* [unit][digit-1] */
+    uint16_t places[27 * 9];    /* [unit * 9 + digit - 1] */
 } State;
 
 static void init_tables(void)
 {
     for (int r = 0; r < 9; r++)
         for (int c = 0; c < 9; c++) {
-            UNITS[r][c] = (uint8_t)(r * 9 + c);
-            UNITS[9 + c][r] = (uint8_t)(r * 9 + c);
+            UNITS[r * 9 + c] = (uint8_t)(r * 9 + c);
+            UNITS[(9 + c) * 9 + r] = (uint8_t)(r * 9 + c);
         }
     for (int b = 0; b < 9; b++) {
         int br = b / 3, bc = b % 3;
         for (int k = 0; k < 9; k++)
-            UNITS[18 + b][k] =
+            UNITS[(18 + b) * 9 + k] =
                 (uint8_t)((br * 3 + k / 3) * 9 + bc * 3 + k % 3);
     }
     for (int i = 0; i < 81; i++) {
@@ -61,12 +70,15 @@ static void init_tables(void)
         POS_OF[i][0] = (uint8_t)c;                       /* along the row */
         POS_OF[i][1] = (uint8_t)r;                       /* down the column */
         POS_OF[i][2] = (uint8_t)((r % 3) * 3 + c % 3);   /* within the box */
+        for (int t = 0; t < 3; t++)
+            UPOS[i][t] = (uint32_t)(UNIT_OF[i][t] * 9) << 16
+                       | (uint16_t)~(1u << POS_OF[i][t]);
         bool seen[81] = { false };
         seen[i] = true;
         int np = 0;
         for (int t = 0; t < 3; t++)
             for (int k = 0; k < 9; k++) {
-                int j = UNITS[UNIT_OF[i][t]][k];
+                int j = UNITS[UNIT_OF[i][t] * 9 + k];
                 if (!seen[j]) {
                     seen[j] = true;
                     PEERS[i][np++] = (uint8_t)j;
@@ -91,11 +103,11 @@ static bool eliminate(State *restrict st, int i, uint16_t bit)
     /* Digit `bit` can no longer sit at this cell's position in any of its
      * three units. Three unconditional AND-NOTs; no branches, no scan. */
     const int d = __builtin_ctz(bit) - 1;
-    const uint8_t *restrict un = UNIT_OF[i];
-    const uint8_t *restrict po = POS_OF[i];
-    st->places[un[0]][d] &= (uint16_t)~(1u << po[0]);
-    st->places[un[1]][d] &= (uint16_t)~(1u << po[1]);
-    st->places[un[2]][d] &= (uint16_t)~(1u << po[2]);
+    uint16_t *restrict pl = st->places;
+    const uint32_t w0 = UPOS[i][0], w1 = UPOS[i][1], w2 = UPOS[i][2];
+    pl[UBASE(w0) + d] &= UNOTBIT(w0);
+    pl[UBASE(w1) + d] &= UNOTBIT(w1);
+    pl[UBASE(w2) + d] &= UNOTBIT(w2);
 
     if (!(c & (c - 1))) {               /* naked single: strip from peers */
         for (int k = 0; k < 20; k++) {
@@ -105,13 +117,17 @@ static bool eliminate(State *restrict st, int i, uint16_t bit)
         }
     }
 
-    /* Re-read: the propagation above may have narrowed these further. */
+    /* Re-read: the propagation above may have narrowed these further. The
+     * same scaled base indexes both `places` and `UNITS`, so recovering the
+     * cell behind a hidden single costs one tzcnt and one load. */
+    const uint32_t w[3] = { w0, w1, w2 };
     for (int t = 0; t < 3; t++) {
-        uint16_t p = st->places[un[t]][d];
+        unsigned base = UBASE(w[t]);
+        uint16_t p = pl[base + d];
         if (!p)                         /* bit has nowhere left in unit */
             return false;
         if (!(p & (p - 1))) {           /* exactly one place: hidden single */
-            int place = UNITS[un[t]][__builtin_ctz(p)];
+            int place = UNITS[base + __builtin_ctz(p)];
             uint16_t pc = cand[place];
             if ((pc & (pc - 1)) && !assign(st, place, bit))
                 return false;
@@ -168,9 +184,8 @@ static bool solve(const uint8_t *grid, State *st)
 {
     for (int i = 0; i < 81; i++)
         st->cand[i] = ALL;
-    for (int u = 0; u < 27; u++)
-        for (int d = 0; d < 9; d++)
-            st->places[u][d] = ALLPOS;
+    for (int u = 0; u < 27 * 9; u++)
+        st->places[u] = ALLPOS;
     for (int i = 0; i < 81; i++) {
         int d = grid[i];
         if (d) {
