@@ -49,7 +49,7 @@ jobs:
           cp "$(ls -t results/*.json | head -1)" results/github-runner.json
           python3 bench/run.py --readme results/github-runner.json
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: benchmark-results
           path: |
