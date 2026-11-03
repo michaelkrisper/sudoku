@@ -15,8 +15,8 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
-      - run: pip install ruff
+          python-version: '3.15'
+      - run: pip install -r requirements-dev.txt
       - name: ruff
         run: ruff check .
       - name: shellcheck
@@ -28,8 +28,8 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
-      - run: pip install pytest matplotlib
+          python-version: '3.15'
+      - run: pip install -r requirements-dev.txt
       - run: pytest -q tests
 
   # Every implementation in every language against the reference solutions.

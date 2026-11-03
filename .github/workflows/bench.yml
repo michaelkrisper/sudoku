@@ -15,7 +15,7 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchains
       - name: Verify every implementation
         run: python3 bench/run.py --verify
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchains
 
       - name: Record runner hardware
@@ -49,7 +49,7 @@ jobs:
           cp "$(ls -t results/*.json | head -1)" results/github-runner.json
           python3 bench/run.py --readme results/github-runner.json
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: benchmark-results
           path: |
