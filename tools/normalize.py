@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Normalize sudoku collections to one 81-char line per puzzle, 0 = empty.
 Reads stdin, writes stdout."""
-import re, sys
+import re
+import sys
 
 digits = []
 for line in sys.stdin:

@@ -3,7 +3,7 @@
 # normal verify run does not exercise: argument handling, comment and blank
 # lines, contradictory input, empty input, and the shape of the stderr line.
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 impls=()
 for f in impl/python/*.py; do
@@ -49,8 +49,8 @@ for entry in "${impls[@]}"; do
         "$([ "$out" = UNSOLVED ] && [ "$rc" = 0 ] && echo ok)"
 
     # empty input is not an error
-    </dev/null $cmd >/dev/null 2>&1
-    check "$name" "empty input must exit 0 (rc=$?)" "$([ $? = 0 ] && echo ok)"
+    </dev/null $cmd >/dev/null 2>&1; rc=$?
+    check "$name" "empty input must exit 0 (rc=$rc)" "$([ "$rc" = 0 ] && echo ok)"
 done
 
 [ "$fail" = 0 ] && echo "all implementations honour the I/O contract"

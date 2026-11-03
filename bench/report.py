@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import LogLocator, NullFormatter
@@ -123,7 +124,7 @@ def chart_by_impl(by, langs, algos, set_name, theme, path):
     fig.patch.set_facecolor(th['surface'])
     axes = [axes] if n == 1 else list(axes)
     ys = range(len(langs))
-    for ax, algo in zip(axes, algos):
+    for ax, algo in zip(axes, algos, strict=True):
         style(ax, th)
         vals, labels = [], []
         for lang in langs:
@@ -134,7 +135,7 @@ def chart_by_impl(by, langs, algos, set_name, theme, path):
         ax.set_xscale('log')
         ax.grid(axis='x', color=th['grid'], linewidth=1, zorder=0)
         ax.set_axisbelow(True)
-        pts = [(y, v) for y, v in zip(ys, vals) if v is not None]
+        pts = [(y, v) for y, v in zip(ys, vals, strict=True) if v is not None]
         if pts:
             ax.scatter([v for _, v in pts], [y for y, _ in pts], s=46,
                        color=th['mark'], edgecolor=th['surface'], linewidth=2,
@@ -145,7 +146,7 @@ def chart_by_impl(by, langs, algos, set_name, theme, path):
                 ax.annotate(human(v), (v, y), textcoords='offset points',
                             xytext=(0, 8), ha='center', fontsize=7,
                             color=th['muted'])
-        for y, lab in zip(ys, labels):
+        for y, lab in zip(ys, labels, strict=True):
             if lab:
                 ax.text(0.5, y, lab, transform=ax.get_yaxis_transform(),
                         ha='center', va='center', fontsize=7, color=th['muted'])
@@ -236,7 +237,7 @@ def mb(kilobytes):
 def cost_section(data, langs, algos, by):
     """Size, startup and memory — the costs a throughput number hides."""
     cost = {(c['lang'], c['algo']): c for c in data.get('cost', [])}
-    langinfo = {l['lang']: l for l in data.get('languages', [])}
+    langinfo = {li['lang']: li for li in data.get('languages', [])}
     if not cost:
         return []
 
@@ -245,7 +246,7 @@ def cost_section(data, langs, algos, by):
             '|---|---|---|---|---|---|---|']
     for lang in langs:
         c = cost.get((lang, 'mrv')) or next(
-            (v for (l, _), v in cost.items() if l == lang), None)
+            (v for (lg, _), v in cost.items() if lg == lang), None)
         if not c:
             continue
         info = langinfo.get(lang, {})
@@ -258,7 +259,7 @@ def cost_section(data, langs, algos, by):
     out += rows + ['']
 
     # Startup measured against the thing it is charged to: one solved puzzle.
-    ref = next((l for l in ('c-clang', 'c-gcc', 'asm') if l in langs), None)
+    ref = next((lg for lg in ('c-clang', 'c-gcc', 'asm') if lg in langs), None)
     if ref:
         r = by.get((ref, 'mrv', 'easy'))
         c = cost.get((ref, 'mrv'))
@@ -283,10 +284,10 @@ def cost_section(data, langs, algos, by):
             'Choosing the language decides the memory footprint here; choosing '
             'the algorithm decides the time.', '']
 
-    tc = [(l, langinfo[l]['toolchain']) for l in langs
-          if langinfo.get(l, {}).get('toolchain')]
+    tc = [(lg, langinfo[lg]['toolchain']) for lg in langs
+          if langinfo.get(lg, {}).get('toolchain')]
     if tc:
-        out += ['Built with: ' + '; '.join(f'{l} {t}' for l, t in tc) + '.', '']
+        out += ['Built with: ' + '; '.join(f'{lg} {t}' for lg, t in tc) + '.', '']
     return out
 
 

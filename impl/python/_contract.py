@@ -2,7 +2,8 @@
 
 Usage: python3 <solver>.py [reps] [threads] < puzzles.txt
 """
-import sys, time
+import sys
+import time
 
 
 def run(solve, solve_batch=None):

@@ -1,5 +1,6 @@
 """mrv parallelized over puzzles via multiprocessing (GIL)."""
 import multiprocessing as mp
+
 from _contract import run
 from mrv import solve
 

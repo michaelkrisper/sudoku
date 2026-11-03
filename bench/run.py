@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """One harness for all implementations: build, verify, benchmark, report."""
-import argparse, ctypes, json, os, platform, statistics, subprocess, sys, time
+import argparse
+import ctypes
+import json
+import os
+import platform
+import statistics
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -73,7 +81,7 @@ def run_solver(cmd, puzzles_text, reps=1, threads=1, timeout=SET_TIMEOUT):
 
 def load_set(name):
     lines = (ROOT / 'puzzles' / f'{name}.txt').read_text().splitlines()
-    return [l for l in lines if l.strip() and not l.startswith('#')]
+    return [ln for ln in lines if ln.strip() and not ln.startswith('#')]
 
 
 def verify(impls):
@@ -92,13 +100,13 @@ def verify(impls):
             print(f'FAIL {name}: {len(lines)} lines, expected {len(expected)}')
             failed.append(name)
             continue
-        bad = [i for i, (got, want) in enumerate(zip(lines, expected))
+        bad = [i for i, (got, want) in enumerate(zip(lines, expected, strict=True))
                if got != want and not (got == 'UNSOLVED' and algo == 'rules')]
         if bad:
             print(f'FAIL {name}: wrong solution for puzzle(s) {bad}')
             failed.append(name)
         else:
-            unsolved = sum(1 for l in lines if l == 'UNSOLVED')
+            unsolved = sum(1 for ln in lines if ln == 'UNSOLVED')
             print(f'PASS {name}' + (f' ({unsolved} unsolved)' if unsolved else ''))
     print(f'{len(impls) - len(failed)}/{len(impls)} implementations pass verify')
     return [i for i in impls if f'{i[0]}/{i[1]}' not in failed], failed
@@ -121,7 +129,7 @@ def bench_one(cmd, set_name, threads):
     return {'reps': reps, 'samples': n_samples, 'ns_median': ns_med,
             'us_per_puzzle': ns_med / reps / n_puzzles / 1000,
             'puzzles': n_puzzles,
-            'solved': sum(1 for l in lines if l != 'UNSOLVED'),
+            'solved': sum(1 for ln in lines if ln != 'UNSOLVED'),
             'status': 'ok'}
 
 
@@ -191,7 +199,8 @@ def main():
         sys.exit('no implementations found')
 
     if args.cost_only:
-        import cost, report
+        import cost
+        import report
         path = Path(args.cost_only)
         data = json.loads(path.read_text())
         data['cost'], data['languages'] = cost.collect(impls, langs_of(impls))

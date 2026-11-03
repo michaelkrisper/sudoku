@@ -22,6 +22,8 @@ cpu=${AB_CPU:-2}
 puzzles="puzzles/${set_name}.txt"
 [ -f "$puzzles" ] || { echo "no such set: $puzzles" >&2; exit 1; }
 
+# $bin is deliberately unquoted: it may be a command with arguments.
+# shellcheck disable=SC2086
 run() { taskset -c "$cpu" $bin "$1" 1 < "$puzzles" 2>&1 >/dev/null | sed -n 's/^ns=//p'; }
 
 if [ "$reps" = 0 ]; then          # calibrate to ~1s of measured work

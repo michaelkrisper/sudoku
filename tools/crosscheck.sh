@@ -12,7 +12,7 @@
 # Usage: tools/crosscheck.sh [set...]     (default: all four sets)
 #        TIMEOUT=60 tools/crosscheck.sh   (seconds per implementation and set)
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 : "${TIMEOUT:=120}"
 
 sets=("${@:-}")
@@ -43,6 +43,8 @@ for entry in "${impls[@]}"; do
     name=${entry%%:*}; cmd=${entry#*:}
     algo=${name##*-}; [ "$algo" = "$name" ] && algo=${name##*/}
     for s in "${sets[@]}"; do
+        # $cmd is deliberately unquoted: it may be "python3 impl/python/mrv.py".
+        # shellcheck disable=SC2086
         out=$(timeout "$TIMEOUT" $cmd < "puzzles/$s.txt" 2>/dev/null)
         if [ $? = 124 ]; then
             echo "TIMEOUT $name on $s (>${TIMEOUT}s)"

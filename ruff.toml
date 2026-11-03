@@ -1,0 +1,9 @@
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[lint.per-file-ignores]
+# Hot loops in the benchmarked solvers keep several statements per line on purpose.
+"impl/python/*.py" = ["E702"]

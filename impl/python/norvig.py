@@ -13,6 +13,7 @@ a value we already hold: zero is a contradiction, a single bit is a hidden
 single whose position is one bit_length away.
 """
 import sys
+
 from _contract import run
 
 sys.setrecursionlimit(10000)   # eliminate/assign chains can nest deeply

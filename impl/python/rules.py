@@ -1,5 +1,6 @@
 """Pure rule-based solver (no guessing). Unsolvable-by-logic -> UNSOLVED."""
 from itertools import combinations
+
 from _contract import run
 
 ALL = 0x3FE
