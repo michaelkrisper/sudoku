@@ -1,33 +1,33 @@
-# Sudoku Benchmark — Phase 1: Harness + Python-Referenz — Implementation Plan
+# Sudoku Benchmark — Phase 1: Harness + Python Reference — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Lauffähiges Benchmark-Gerüst: Puzzle-Sets, ein gemeinsamer Harness (Build/Verify/Bench/Report/README) und alle 6 Algorithmen in Python als Referenzimplementierung.
+**Goal:** Working benchmark scaffold: puzzle sets, one shared harness (build/verify/bench/report/README) and all 6 algorithms in Python as reference implementation.
 
-**Architecture:** Jeder Solver ist ein eigenständiges stdin/stdout-Programm nach dem I/O-Vertrag der Spec (`docs/superpowers/specs/2026-08-09-sudoku-benchmark-design.md`). Der Harness `bench/run.py` kennt alle (Sprache, Algorithmus)-Paare, überspringt fehlende Implementierungen und ist damit ab Task 4 dauerhaft das Testwerkzeug für alle späteren Sprachen.
+**Architecture:** Each solver is a standalone stdin/stdout program following the I/O contract of the spec (`docs/superpowers/specs/2026-08-09-sudoku-benchmark-design.md`). The harness `bench/run.py` knows all (language, algorithm) pairs, skips missing implementations and is thus, from Task 4 on, the permanent test tool for all later languages.
 
-**Tech Stack:** Python ≥ 3.10 (int.bit_count), matplotlib (nur Harness), curl (Puzzle-Downloads). Keine weiteren Dependencies.
+**Tech Stack:** Python ≥ 3.10 (int.bit_count), matplotlib (harness only), curl (puzzle downloads). No further dependencies.
 
 ## Global Constraints
 
-- I/O-Vertrag (Spec, verbatim): Aufruf `solver [reps] [threads] < puzzles.txt`, beide default 1; Input 81-Zeichen-Zeilen aus `0-9`, `#`-Zeilen und Leerzeilen ignorieren; alle Puzzles einlesen/parsen → Monotonic-Clock → reps × alle Puzzles lösen (jede Wiederholung auf frischer Kopie) → Clock stoppen; stdout: pro Puzzle `81 Ziffern` oder `UNSOLVED` in Eingabereihenfolge; stderr: genau `ns=<gesamt>`; Exit-Code 0 auch bei UNSOLVED.
-- Ungültige Puzzles: `UNSOLVED` ausgeben, nie crashen, nie falsche Lösung.
-- Solver bleiben minimal: keine Argument-Parser-Libs, keine Ausgabe außer Vertrag.
-- Algorithmus-Keys: `naive`, `mrv`, `norvig`, `dlx`, `rules`, `mrv_mt`.
-- Commits: prägnante englische Messages, keine Co-Author-Zeile.
+- I/O contract (spec, verbatim): invocation `solver [reps] [threads] < puzzles.txt`, both default 1; input 81-char lines from `0-9`, ignore `#` lines and empty lines; read/parse all puzzles → monotonic clock → solve reps × all puzzles (each repetition on a fresh copy) → stop clock; stdout: per puzzle `81 digits` or `UNSOLVED` in input order; stderr: exactly `ns=<total>`; exit code 0 even with UNSOLVED.
+- Invalid puzzles: output `UNSOLVED`, never crash, never a wrong solution.
+- Solvers stay minimal: no argument-parser libs, no output beyond the contract.
+- Algorithm keys: `naive`, `mrv`, `norvig`, `dlx`, `rules`, `mrv_mt`.
+- Commits: concise English messages, no co-author line.
 
 ---
 
-### Task 1: Repo-Gerüst
+### Task 1: Repo scaffold
 
 **Files:**
 - Delete: `SudokuSolver.ipynb`
-- Create: `.gitignore`, `README.md`, `Makefile`, Verzeichnisse `puzzles/ impl/python/ bench/ tools/ results/ assets/`
+- Create: `.gitignore`, `README.md`, `Makefile`, directories `puzzles/ impl/python/ bench/ tools/ results/ assets/`
 
 **Interfaces:**
-- Produces: Verzeichnislayout laut Spec; `make` (no-op Default-Target `all`), von Task 4 an vom Harness aufgerufen.
+- Produces: directory layout per spec; `make` (no-op default target `all`), called by the harness from Task 4 on.
 
-- [ ] **Step 1: Notebook entfernen, Verzeichnisse anlegen**
+- [ ] **Step 1: Remove notebook, create directories**
 
 ```bash
 cd /home/michi/sudoku
@@ -45,7 +45,7 @@ results/*.json
 !results/.gitkeep
 ```
 
-- [ ] **Step 3: README-Stub** (wird in Task 10 vom Harness erweitert; Marker jetzt schon setzen)
+- [ ] **Step 3: README stub** (extended by the harness in Task 10; set the markers now)
 
 ```markdown
 # sudoku
@@ -61,7 +61,7 @@ _No benchmark results yet._
 <!-- BENCH:END -->
 ```
 
-- [ ] **Step 4: Makefile-Stub**
+- [ ] **Step 4: Makefile stub**
 
 ```make
 .PHONY: all clean
@@ -79,15 +79,15 @@ git add -A && git commit -m "Scaffold repo layout, remove tutorial notebook"
 
 ---
 
-### Task 2: Puzzle-Sets + Validierung + Referenzlösungen
+### Task 2: Puzzle sets + validation + reference solutions
 
 **Files:**
 - Create: `tools/normalize.py`, `tools/validate_puzzles.py`, `puzzles/{easy,medium,hard,extreme,verify}.txt`, `puzzles/verify_solutions.txt`
 
 **Interfaces:**
-- Produces: Puzzle-Dateien (81-Zeichen-Zeilen, `0` = leer); `verify_solutions.txt` zeilenweise parallel zu `verify.txt`; `tools/validate_puzzles.py <in> [--solutions <out>]` — Exit 1 bei ungültigem/mehrdeutigem Puzzle.
+- Produces: puzzle files (81-char lines, `0` = empty); `verify_solutions.txt` line-by-line parallel to `verify.txt`; `tools/validate_puzzles.py <in> [--solutions <out>]` — exit 1 on invalid/ambiguous puzzle.
 
-- [ ] **Step 1: `tools/normalize.py`** — beliebige Quellformate → 81-Zeichen-Zeilen
+- [ ] **Step 1: `tools/normalize.py`** — arbitrary source formats → 81-char lines
 
 ```python
 #!/usr/bin/env python3
@@ -106,7 +106,7 @@ for i in range(0, len(s), 81):
     print(s[i:i+81])
 ```
 
-- [ ] **Step 2: `tools/validate_puzzles.py`** — Gültigkeit, Lösbarkeit, Eindeutigkeit; schreibt optional Lösungen. Enthält einen eigenen Bitmask-Backtracker mit Lösungszähler (bewusst unabhängig von `impl/`, damit er später als Referenz-Checker taugt).
+- [ ] **Step 2: `tools/validate_puzzles.py`** — validity, solvability, uniqueness; optionally writes solutions. Contains its own bitmask backtracker with solution counter (deliberately independent of `impl/`, so it can later serve as reference checker).
 
 ```python
 #!/usr/bin/env python3
@@ -181,7 +181,7 @@ def main():
 main()
 ```
 
-- [ ] **Step 3: Quellen herunterladen und normalisieren**
+- [ ] **Step 3: Download and normalize sources**
 
 ```bash
 cd /home/michi/sudoku
@@ -191,28 +191,28 @@ curl -fsSL https://projecteuler.net/project/resources/p096_sudoku.txt \
                                           | python3 tools/normalize.py > puzzles/medium.txt
 curl -fsSL http://norvig.com/top95.txt    | python3 tools/normalize.py > puzzles/hard.txt
 curl -fsSL http://norvig.com/hardest.txt  | python3 tools/normalize.py > puzzles/extreme.txt
-wc -l puzzles/*.txt   # erwartet: easy 50, medium 50, hard 95, extreme 11
+wc -l puzzles/*.txt   # expected: easy 50, medium 50, hard 95, extreme 11
 ```
 
-Falls eine URL nicht erreichbar ist: alternative Spiegel suchen (die Dateien sind vielfach gespiegelt, z.B. in GitHub-Klonen von Norvigs sudoku.py) — nicht selbst Puzzles erfinden.
+If a URL is unreachable: look for alternative mirrors (the files are widely mirrored, e.g. in GitHub clones of Norvig's sudoku.py) — do not invent puzzles.
 
-- [ ] **Step 4: `extreme.txt` ergänzen** — Anti-Brute-Force-Puzzle (gegen Zeilen-Reihenfolge-Backtracking konstruiert, Wikipedia „Sudoku solving algorithms") ans Ende anhängen:
+- [ ] **Step 4: Extend `extreme.txt`** — append the anti-brute-force puzzle (constructed against row-order backtracking, Wikipedia "Sudoku solving algorithms") at the end:
 
 ```
 ..............3.85..1.2.......5.7.....4...1...9.......5......73..2.1........4...9
 ```
 
-(vorher mit `sed 's/\./0/g'` auf `0`-Format bringen). Die Validierung in Step 5 ist das Gate: fällt das Puzzle durch (nicht eindeutig/ungültig), wird es entfernt statt repariert.
+(convert to `0` format with `sed 's/\./0/g'` first). The validation in Step 5 is the gate: if the puzzle fails (not unique/invalid), it is removed rather than repaired.
 
-- [ ] **Step 5: Alle Sets validieren**
+- [ ] **Step 5: Validate all sets**
 
 ```bash
 python3 tools/validate_puzzles.py puzzles/easy.txt puzzles/medium.txt puzzles/hard.txt puzzles/extreme.txt
 ```
 
-Erwartet: `OK` für alle vier Dateien. Jede Zeile, die als mehrdeutig gemeldet wird, aus der Datei löschen und neu validieren (mehrdeutige Puzzles machen den Lösungsvergleich im Harness unmöglich).
+Expected: `OK` for all four files. Delete every line reported as ambiguous from the file and re-validate (ambiguous puzzles make the solution comparison in the harness impossible).
 
-- [ ] **Step 6: Verify-Set bauen** — je 3 Puzzles aus easy/medium/hard, 2 aus extreme, plus das Puzzle aus dem alten Notebook:
+- [ ] **Step 6: Build verify set** — 3 puzzles each from easy/medium/hard, 2 from extreme, plus the puzzle from the old notebook:
 
 ```bash
 { head -3 puzzles/easy.txt; head -3 puzzles/medium.txt; head -3 puzzles/hard.txt; \
@@ -222,7 +222,7 @@ Erwartet: `OK` für alle vier Dateien. Jede Zeile, die als mehrdeutig gemeldet w
 python3 tools/validate_puzzles.py puzzles/verify.txt --solutions puzzles/verify_solutions.txt
 ```
 
-Erwartet: `OK`, `verify_solutions.txt` mit 12 Zeilen à 81 Ziffern.
+Expected: `OK`, `verify_solutions.txt` with 12 lines of 81 digits each.
 
 - [ ] **Step 7: Commit**
 
@@ -232,13 +232,13 @@ git add -A && git commit -m "Add puzzle sets (Norvig easy50/top95/hardest, Euler
 
 ---
 
-### Task 3: Python-Kontrakt + `naive` + `mrv`
+### Task 3: Python contract + `naive` + `mrv`
 
 **Files:**
 - Create: `impl/python/_contract.py`, `impl/python/naive.py`, `impl/python/mrv.py`
 
 **Interfaces:**
-- Produces: `_contract.run(solve, solve_batch=None)` — `solve(bytearray[81]) -> Sequence[int]|None`; `solve_batch(grids: list[bytes], threads: int) -> list`. Alle weiteren Python-Solver (Tasks 5–8) nutzen exakt diese Signaturen. `mrv.solve` wird von Task 8 (`mrv_mt`) importiert.
+- Produces: `_contract.run(solve, solve_batch=None)` — `solve(bytearray[81]) -> Sequence[int]|None`; `solve_batch(grids: list[bytes], threads: int) -> list`. All further Python solvers (Tasks 5–8) use exactly these signatures. `mrv.solve` is imported by Task 8 (`mrv_mt`).
 
 - [ ] **Step 1: `impl/python/_contract.py`**
 
@@ -268,7 +268,7 @@ def run(solve, solve_batch=None):
         for r in results) + '\n')
 ```
 
-- [ ] **Step 2: `impl/python/naive.py`** — der Notebook-Algorithmus, nur auf flachem Board:
+- [ ] **Step 2: `impl/python/naive.py`** — the notebook algorithm, just on a flat board:
 
 ```python
 """Naive backtracking: first empty cell, digits 1-9 in order."""
@@ -311,7 +311,7 @@ if __name__ == '__main__':
     run(solve)
 ```
 
-- [ ] **Step 3: `impl/python/mrv.py`** — Bitmasken + Most-Constrained-Cell:
+- [ ] **Step 3: `impl/python/mrv.py`** — bitmasks + most-constrained cell:
 
 ```python
 """Backtracking with bitmask candidates and most-constrained-cell order."""
@@ -361,17 +361,17 @@ if __name__ == '__main__':
     run(solve)
 ```
 
-- [ ] **Step 4: Manueller Smoke-Test (der Harness kommt erst in Task 4)**
+- [ ] **Step 4: Manual smoke test (the harness only arrives in Task 4)**
 
 ```bash
 cd /home/michi/sudoku
 python3 impl/python/naive.py < puzzles/verify.txt > /tmp/naive.out 2>/tmp/naive.err
 python3 impl/python/mrv.py   < puzzles/verify.txt > /tmp/mrv.out   2>/tmp/mrv.err
 diff /tmp/naive.out puzzles/verify_solutions.txt && diff /tmp/mrv.out puzzles/verify_solutions.txt
-cat /tmp/naive.err /tmp/mrv.err   # je eine Zeile ns=<zahl>
+cat /tmp/naive.err /tmp/mrv.err   # one line ns=<number> each
 ```
 
-Erwartet: beide diffs leer, zwei plausible `ns=`-Zeilen. (naive darf auf verify.txt langsam sein — die zwei extreme-Puzzles können Sekunden dauern.)
+Expected: both diffs empty, two plausible `ns=` lines. (naive may be slow on verify.txt — the two extreme puzzles can take seconds.)
 
 - [ ] **Step 5: Commit**
 
@@ -387,9 +387,9 @@ git add impl && git commit -m "Add python naive and mrv solvers with shared I/O 
 - Create: `bench/run.py`
 
 **Interfaces:**
-- Produces: `python3 bench/run.py --verify [--lang L ...] [--algo A ...]` — baut via `make`, findet vorhandene Implementierungen, prüft gegen `puzzles/verify(_solutions).txt`, Exit 1 bei FAIL. Funktionen `discover()`, `run_solver(cmd, text, reps, threads, timeout) -> (lines, ns)` werden in Task 9 wiederverwendet.
+- Produces: `python3 bench/run.py --verify [--lang L ...] [--algo A ...]` — builds via `make`, finds existing implementations, checks against `puzzles/verify(_solutions).txt`, exit 1 on FAIL. Functions `discover()`, `run_solver(cmd, text, reps, threads, timeout) -> (lines, ns)` are reused in Task 9.
 
-- [ ] **Step 1: `bench/run.py` mit Discovery, THP-Fix und Verify-Modus**
+- [ ] **Step 1: `bench/run.py` with discovery, THP fix and verify mode**
 
 ```python
 #!/usr/bin/env python3
@@ -500,15 +500,15 @@ if __name__ == '__main__':
     main()
 ```
 
-- [ ] **Step 2: Verify laufen lassen**
+- [ ] **Step 2: Run verify**
 
 ```bash
 python3 bench/run.py --verify
 ```
 
-Erwartet: `PASS python/naive`, `PASS python/mrv`, `2/2 implementations pass verify`, Exit 0.
+Expected: `PASS python/naive`, `PASS python/mrv`, `2/2 implementations pass verify`, exit 0.
 
-- [ ] **Step 3: Negativtest** — absichtlich eine Lösung in `puzzles/verify_solutions.txt` um eine Ziffer ändern, `--verify` muss beide Implementierungen FAILen und Exit 1 liefern; Änderung zurücknehmen (`git checkout -- puzzles/verify_solutions.txt`), Verify wieder grün.
+- [ ] **Step 3: Negative test** — deliberately change one digit of a solution in `puzzles/verify_solutions.txt`; `--verify` must FAIL both implementations and return exit 1; revert the change (`git checkout -- puzzles/verify_solutions.txt`), verify green again.
 
 - [ ] **Step 4: Commit**
 
@@ -526,7 +526,7 @@ git add bench && git commit -m "Add benchmark harness with build and verify stag
 **Interfaces:**
 - Consumes: `_contract.run(solve)`; `solve(bytearray[81]) -> list[int]|None`.
 
-- [ ] **Step 1: `impl/python/norvig.py`** — Constraint Propagation (Elimination + Naked/Hidden Singles als Fixpunkt) plus MRV-Suche, Kandidaten als Bitmasken statt Strings (Norvigs Algorithmus, nicht seine Datenstrukturen):
+- [ ] **Step 1: `impl/python/norvig.py`** — constraint propagation (elimination + naked/hidden singles as fixed point) plus MRV search, candidates as bitmasks instead of strings (Norvig's algorithm, not his data structures):
 
 ```python
 """Norvig-style constraint propagation + search (bitmask candidates)."""
@@ -615,7 +615,7 @@ if __name__ == '__main__':
 **Interfaces:**
 - Consumes: `_contract.run(solve)`; `solve(bytearray[81]) -> list[int]|None`.
 
-- [ ] **Step 1: `impl/python/dlx.py`** — Algorithm X mit Dancing Links auf flachen Arrays (kein Objektgraph). 324 Spalten: Zelle(81) + Zeile×Ziffer(81) + Spalte×Ziffer(81) + Box×Ziffer(81); 729 Optionen à 4 Knoten. Matrix wird pro Puzzle neu gebaut (Aufbau ist Teil der Messung — für die kompilierten Sprachen später als Optimierung dokumentieren: einmal bauen, Clues covern/uncovern).
+- [ ] **Step 1: `impl/python/dlx.py`** — Algorithm X with Dancing Links on flat arrays (no object graph). 324 columns: cell(81) + row×digit(81) + column×digit(81) + box×digit(81); 729 options of 4 nodes each. Matrix is rebuilt per puzzle (construction is part of the measurement — document as an optimization for the compiled languages later: build once, cover/uncover clues).
 
 ```python
 """Knuth's Algorithm X with Dancing Links, array-based."""
@@ -742,9 +742,9 @@ if __name__ == '__main__':
 - Create: `impl/python/rules.py`
 
 **Interfaces:**
-- Consumes: `_contract.run(solve)`; `solve` liefert `None` für „nicht rein logisch lösbar" → `UNSOLVED`.
+- Consumes: `_contract.run(solve)`; `solve` returns `None` for "not solvable by pure logic" → `UNSOLVED`.
 
-- [ ] **Step 1: `impl/python/rules.py`** — Technik-Pipeline bis Fixpunkt: Naked Singles, Hidden Singles, Naked Pairs, Hidden Pairs, Pointing Pairs, Box-Line-Reduction, X-Wing, Swordfish. Kein Raten. Widerspruch ⇒ `None` (nie falsche Lösung).
+- [ ] **Step 1: `impl/python/rules.py`** — technique pipeline until fixed point: naked singles, hidden singles, naked pairs, hidden pairs, pointing pairs, box-line reduction, X-Wing, Swordfish. No guessing. Contradiction ⇒ `None` (never a wrong solution).
 
 ```python
 """Pure rule-based solver (no guessing). Unsolvable-by-logic -> UNSOLVED."""
@@ -918,11 +918,11 @@ if __name__ == '__main__':
     run(solve)
 ```
 
-Hinweis an den Implementierer: der Code oben ist Vorlage, keine Kopiervorschrift — insbesondere `naked_pairs` (die `prog |=`-Zeile ist umständlich) und die doppelte `li`-Berechnung in `fish` beim Schreiben glätten. Verhalten ist durch Step 2/3 abgesichert.
+Note to the implementer: the code above is a template, not a copy-paste mandate — in particular, clean up `naked_pairs` (the `prog |=` line is clumsy) and the duplicate `li` computation in `fish` while writing. Behavior is covered by Step 2/3.
 
-- [ ] **Step 2: Verify** — `python3 bench/run.py --verify --lang python` → `PASS python/rules (N unsolved)`. Erwartung: alle easy gelöst, die beiden extreme-Puzzles im Verify-Set bleiben UNSOLVED; kein FAIL.
+- [ ] **Step 2: Verify** — `python3 bench/run.py --verify --lang python` → `PASS python/rules (N unsolved)`. Expectation: all easy solved, the two extreme puzzles in the verify set stay UNSOLVED; no FAIL.
 
-- [ ] **Step 3: Plausibilität der Lösungsquote** — `python3 impl/python/rules.py < puzzles/easy.txt | grep -c UNSOLVED` → erwartet 0 oder nahe 0; `... < puzzles/hard.txt | grep -c UNSOLVED` → deutlich > 0. Zahlen im Commit-Text festhalten.
+- [ ] **Step 3: Solve-rate plausibility** — `python3 impl/python/rules.py < puzzles/easy.txt | grep -c UNSOLVED` → expected 0 or close to 0; `... < puzzles/hard.txt | grep -c UNSOLVED` → clearly > 0. Record the numbers in the commit message.
 
 - [ ] **Step 4: Commit** — `git add impl && git commit -m "Add python rule-based solver (singles, pairs, pointing, box-line, fish)"`
 
@@ -936,7 +936,7 @@ Hinweis an den Implementierer: der Code oben ist Vorlage, keine Kopiervorschrift
 **Interfaces:**
 - Consumes: `mrv.solve`, `_contract.run(None, solve_batch)`.
 
-- [ ] **Step 1: `impl/python/mrv_mt.py`** — `multiprocessing.Pool` über Puzzles; Pool wird einmal lazily erzeugt (Fork-Overhead zahlt nur die erste rep; bei kalibrierten reps amortisiert):
+- [ ] **Step 1: `impl/python/mrv_mt.py`** — `multiprocessing.Pool` over puzzles; the pool is created lazily once (only the first rep pays the fork overhead; amortized with calibrated reps):
 
 ```python
 """mrv parallelized over puzzles via multiprocessing (GIL)."""
@@ -962,7 +962,7 @@ if __name__ == '__main__':
     run(None, solve_batch)
 ```
 
-- [ ] **Step 2: Verify + Speedup-Smoke-Test**
+- [ ] **Step 2: Verify + speedup smoke test**
 
 ```bash
 python3 bench/run.py --verify --lang python     # PASS python/mrv_mt (6/6)
@@ -970,21 +970,21 @@ python3 impl/python/mrv_mt.py 20 1 < puzzles/hard.txt 2>&1 >/dev/null
 python3 impl/python/mrv_mt.py 20 4 < puzzles/hard.txt 2>&1 >/dev/null
 ```
 
-Erwartet: ns mit 4 Threads deutlich kleiner als mit 1 (nicht notwendig 4×; Fork + IPC kosten).
+Expected: ns with 4 threads clearly smaller than with 1 (not necessarily 4×; fork + IPC cost).
 
 - [ ] **Step 3: Commit** — `git add impl && git commit -m "Add python mrv_mt multiprocessing variant"`
 
 ---
 
-### Task 9: Harness — Bench-Modus + Report + JSON
+### Task 9: Harness — bench mode + report + JSON
 
 **Files:**
-- Modify: `bench/run.py` (Bench-Teil ersetzt den Platzhalter am Ende von `main()`)
+- Modify: `bench/run.py` (bench part replaces the placeholder at the end of `main()`)
 
 **Interfaces:**
-- Produces: `python3 bench/run.py [--set S ...]` — kalibriert reps (Ziel ≥1s), Median aus 3 Läufen, Timeout ⇒ DNF, Text-Tabelle auf stdout, Rohdaten `results/<unix-ts>.json`. JSON-Schema: `{"meta": {"host", "cpu", "date"}, "runs": [{"lang", "algo", "set", "reps", "ns_median", "us_per_puzzle", "puzzles", "solved", "status"}]}` — Task 10 und die CI hängen von diesem Schema ab.
+- Produces: `python3 bench/run.py [--set S ...]` — calibrates reps (target ≥1s), median of 3 runs, timeout ⇒ DNF, text table on stdout, raw data `results/<unix-ts>.json`. JSON schema: `{"meta": {"host", "cpu", "date"}, "runs": [{"lang", "algo", "set", "reps", "ns_median", "us_per_puzzle", "puzzles", "solved", "status"}]}` — Task 10 and CI depend on this schema.
 
-- [ ] **Step 1: Bench-Funktionen an `bench/run.py` anfügen und in `main()` einhängen**
+- [ ] **Step 1: Append bench functions to `bench/run.py` and hook them into `main()`**
 
 ```python
 def bench_one(cmd, algo, set_name, threads):
@@ -1030,7 +1030,7 @@ def cpu_model():
     return 'unknown'
 ```
 
-In `main()` den Platzhalter ersetzen durch:
+In `main()`, replace the placeholder with:
 
 ```python
     import os, platform
@@ -1043,50 +1043,50 @@ In `main()` den Platzhalter ersetzen durch:
     print(f'raw results: {path.relative_to(ROOT)}')
 ```
 
-und `--set` als `ap.add_argument('--set', action='append', choices=SETS)` ergänzen.
+and add `--set` as `ap.add_argument('--set', action='append', choices=SETS)`.
 
-- [ ] **Step 2: Kompletter Python-Lauf**
+- [ ] **Step 2: Complete Python run**
 
 ```bash
 python3 bench/run.py --lang python
 ```
 
-Erwartet: Tabelle mit 6 Algorithmen × 4 Sets; `naive` auf `extreme` sehr wahrscheinlich `dnf` (das Anti-Brute-Force-Puzzle ist genau dafür da); `rules` mit Teil-Lösungsquote; JSON-Datei unter `results/`. Plausibilitätsordnung: mrv/norvig/dlx ≪ naive; mrv_mt schneller als mrv auf hard/extreme.
+Expected: table with 6 algorithms × 4 sets; `naive` on `extreme` very likely `dnf` (the anti-brute-force puzzle is there for exactly that); `rules` with partial solve rate; JSON file under `results/`. Plausibility order: mrv/norvig/dlx ≪ naive; mrv_mt faster than mrv on hard/extreme.
 
 - [ ] **Step 3: Commit** — `git add bench && git commit -m "Add bench mode: calibrated reps, median of 3, JSON results"`
 
 ---
 
-### Task 10: README-Generator + Charts
+### Task 10: README generator + charts
 
 **Files:**
-- Modify: `bench/run.py` (`--readme`-Flag), `README.md` (generierte Sektion zwischen den Markern)
-- Create: `assets/time_by_impl.png`, `assets/rules_solve_rate.png` (generiert)
+- Modify: `bench/run.py` (`--readme` flag), `README.md` (generated section between the markers)
+- Create: `assets/time_by_impl.png`, `assets/rules_solve_rate.png` (generated)
 
 **Interfaces:**
-- Consumes: JSON-Schema aus Task 9.
-- Produces: `python3 bench/run.py --readme results/<file>.json` ersetzt den Block zwischen `<!-- BENCH:BEGIN -->` und `<!-- BENCH:END -->` durch Markdown-Tabellen (µs/Puzzle pro Set, Puzzles/s, Lösungsquote, Speedup mrv_mt vs mrv) und bindet die zwei PNGs ein.
+- Consumes: JSON schema from Task 9.
+- Produces: `python3 bench/run.py --readme results/<file>.json` replaces the block between `<!-- BENCH:BEGIN -->` and `<!-- BENCH:END -->` with Markdown tables (µs/puzzle per set, puzzles/s, solve rate, speedup mrv_mt vs mrv) and embeds the two PNGs.
 
-- [ ] **Step 0: REQUIRED — vor dem Schreiben von Chart-Code die `dataviz`-Skill laden** (Skill-Tool, Name `dataviz`); Charts danach mit matplotlib bauen: Balkenchart Zeit pro Algorithmus×Sprache mit log-Skala (Spanne umfasst Größenordnungen), Solve-Rate-Chart für `rules` pro Set.
+- [ ] **Step 0: REQUIRED — load the `dataviz` skill before writing chart code** (Skill tool, name `dataviz`); then build charts with matplotlib: bar chart of time per algorithm×language with log scale (range spans orders of magnitude), solve-rate chart for `rules` per set.
 
-- [ ] **Step 1: `--readme`-Flag implementieren** — JSON laden, Tabellen als Markdown formatieren (Sets als Spalten, Implementierungen als Zeilen, `dnf`/`error` sichtbar), PNGs nach `assets/` schreiben, README-Block zwischen den Markern ersetzen (Datei komplett lesen, Block per String-Split austauschen, zurückschreiben). Meta-Zeile mit CPU + Datum unter die Tabellen.
+- [ ] **Step 1: Implement the `--readme` flag** — load JSON, format tables as Markdown (sets as columns, implementations as rows, `dnf`/`error` visible), write PNGs to `assets/`, replace the README block between the markers (read the whole file, swap the block via string split, write back). Meta line with CPU + date below the tables.
 
-- [ ] **Step 2: Generieren + anschauen** — `python3 bench/run.py --readme results/<neueste>.json`; README rendern (`glow README.md` oder im Editor), PNGs öffnen; prüfen: log-Skala beschriftet, dnf-Zellen klar erkennbar.
+- [ ] **Step 2: Generate + inspect** — `python3 bench/run.py --readme results/<latest>.json`; render the README (`glow README.md` or in the editor), open the PNGs; check: log scale labeled, dnf cells clearly visible.
 
 - [ ] **Step 3: Commit** — `git add -A && git commit -m "Add README report generation with charts"`
 
 ---
 
-### Task 11: Phase-1-Abschluss
+### Task 11: Phase 1 wrap-up
 
-- [ ] **Step 1: Gesamtlauf aus sauberem Zustand**
+- [ ] **Step 1: Full run from a clean state**
 
 ```bash
-cd /home/michi/sudoku && git status --short   # muss leer sein
-python3 bench/run.py                          # discovery findet nur python -> 6 impls
+cd /home/michi/sudoku && git status --short   # must be empty
+python3 bench/run.py                          # discovery finds only python -> 6 impls
 ```
 
-Erwartet: 6× PASS im Verify, vollständige Bench-Tabelle, JSON + README aktuell.
+Expected: 6× PASS in verify, complete bench table, JSON + README up to date.
 
 - [ ] **Step 2: Push**
 
@@ -1094,14 +1094,14 @@ Erwartet: 6× PASS im Verify, vollständige Bench-Tabelle, JSON + README aktuell
 git push -u origin main
 ```
 
-(Repo bleibt vorerst privat; public erst nach Phase 6 laut Spec.)
+(Repo stays private for now; public only after Phase 6 per spec.)
 
 ---
 
-## Folgepläne (nicht Teil dieses Plans)
+## Follow-up plans (not part of this plan)
 
-- Phase 3: C (alle 6, Vorlage für kompilierte Sprachen; `-O3 -march=native -flto`, pthreads für `mrv_mt`) + Makefile-Targets `build/c-<algo>`.
-- Phase 4: C++, Rust (Cargo-Workspace), Go, JavaScript.
+- Phase 3: C (all 6, template for compiled languages; `-O3 -march=native -flto`, pthreads for `mrv_mt`) + Makefile targets `build/c-<algo>`.
+- Phase 4: C++, Rust (Cargo workspace), Go, JavaScript.
 - Phase 5: Assembly (NASM): naive, mrv, mrv_mt, norvig, dlx, rules.
-- Phase 6: Mikrooptimierungs-Pass, finaler lokaler Volllauf.
-- Phase 7: `.github/workflows/bench.yml`, Repo public, CI-Referenzlauf.
+- Phase 6: Micro-optimization pass, final local full run.
+- Phase 7: `.github/workflows/bench.yml`, repo public, CI reference run.
