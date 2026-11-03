@@ -10,10 +10,10 @@ runs:
         sudo apt-get install -y -qq nasm clang time   # `time` for the cost measurements
         python3 -m pip install --quiet matplotlib
 
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v7
       with:
         go-version: stable
 
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v7
       with:
         node-version: '22'

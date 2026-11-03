@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - run: pip install ruff
+      - name: ruff
+        run: ruff check .
+      - name: shellcheck
+        run: shellcheck tools/*.sh
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - run: pip install pytest matplotlib
+      - run: pytest -q tests
+
+  # Every implementation in every language against the reference solutions.
+  # Pushes to master already get this from the verify job in bench.yml.
+  correctness:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchains
+      - name: Verify every implementation
+        run: python3 bench/run.py --verify
+      - name: Check the I/O contract edge cases
+        run: tools/contract_test.sh
+      - name: Check every implementation against reference solutions
+        run: TIMEOUT=60 tools/crosscheck.sh easy medium
