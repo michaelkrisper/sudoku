@@ -1,16 +1,22 @@
-# sudoku
+# Sudoku Solver Benchmark
+
+Six sudoku algorithms in seven languages, from CPython to hand-written x86-64
+assembly, measured against one I/O contract and checked against reference
+solutions before any number is published.
 
 [![ci](https://github.com/michaelkrisper/sudoku/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelkrisper/sudoku/actions/workflows/ci.yml)
 [![verify](https://github.com/michaelkrisper/sudoku/actions/workflows/bench.yml/badge.svg)](https://github.com/michaelkrisper/sudoku/actions/workflows/bench.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![python: 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](requirements-dev.txt)
+[![rust: edition 2024](https://img.shields.io/badge/rust-edition%202024-orange.svg)](impl/rust/Cargo.toml)
+[![node: 26](https://img.shields.io/badge/node-26-green.svg)](.github/actions/toolchains/action.yml)
 
 Benchmark of sudoku solving algorithms — naive backtracking, MRV bitmask,
 Norvig constraint propagation, Dancing Links (DLX), a pure rule-based solver
 and a multithreaded variant — across Python, JavaScript, Go, Rust, C++, C and
 x86-64 assembly.
 
-Six algorithms, seven languages, one contract. See [algorithms.md](algorithms.md)
-for what each algorithm actually does.
+See [algorithms.md](algorithms.md) for what each algorithm actually does.
 
 ## The contract
 
@@ -32,7 +38,7 @@ a 3 µs solver and a 3 s solver comparable on the same axis.
 ## Running it
 
 Requirements: Linux x86-64, `make`, gcc, clang, Go, Rust (cargo), nasm,
-Node.js and Python 3 with matplotlib. The compiled solvers are built with
+Node.js and Python 3.12+ with matplotlib (`pip install -r requirements-dev.txt`). The compiled solvers are built with
 `-march=native`, so binaries are not portable between machines. The harness
 builds with `make -k`, so a language whose toolchain is missing drops out
 without blocking the others.
@@ -174,14 +180,19 @@ Note also that `extreme` here is not the hardest set for a machine. Those puzzle
 ## Development
 
 ```
-pip install ruff pytest matplotlib
+pip install -r requirements-dev.txt   # ruff, pytest, matplotlib (pinned, updated by Dependabot)
 ruff check .                         # lint the harness, tools and Python solvers
 shellcheck tools/*.sh
 pytest tests                         # reference solver, harness, report and Python solvers
 ```
 
+CI (`.github/workflows/ci.yml`) runs lint and unit tests on every push and pull
+request; pull requests additionally build all 54 implementations and run
+`--verify`, the contract test and the cross-check. The `benchmark` workflow
+re-runs those checks on `master` and measures only when started manually.
+
 Design notes and the original implementation plan live in
-[docs/superpowers](docs/superpowers) (in German).
+[docs/superpowers](docs/superpowers).
 
 ## License
 

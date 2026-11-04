@@ -1,182 +1,182 @@
 # Sudoku Solver Benchmark — Design
 
-Datum: 2026-08-09
+Date: 2026-08-09
 Repo: michaelkrisper/sudoku
 
-## Ziel
+## Goal
 
-Benchmark von 5 Sudoku-Algorithmen plus einer Multithreading-Variante
-in 7 Sprachen (42 Implementierungen), mit Fokus auf maximale Performance
-pro Sprache (Compiler-Flags, Cache-Layout, Mikrooptimierungen).
-Die Solver bleiben minimal (reine stdin/stdout-Programme); Tabellen und
-Charts erzeugt ausschließlich der Harness. Normierte Referenz-Ergebnisse
-kommen aus GitHub Actions; lokale Läufe dienen der Entwicklung.
+Benchmark of 5 sudoku algorithms plus one multithreading variant
+in 7 languages (42 implementations), focused on maximum performance
+per language (compiler flags, cache layout, micro-optimizations).
+The solvers stay minimal (plain stdin/stdout programs); tables and
+charts are produced exclusively by the harness. Normalized reference results
+come from GitHub Actions; local runs are for development.
 
-## Algorithmen
+## Algorithms
 
-| Key      | Beschreibung |
+| Key      | Description |
 |----------|--------------|
-| `naive`  | Backtracking, erste leere Zelle, Ziffern 1–9 der Reihe nach. Baseline (entspricht dem alten Notebook). |
-| `mrv`    | Backtracking mit Bitmasken-Kandidaten (27 Masken: 9 Zeilen, 9 Spalten, 9 Boxen) und Most-Constrained-Cell-Auswahl (wenigste Kandidaten zuerst, `popcnt`/`tzcnt`). |
-| `norvig` | Constraint Propagation nach Peter Norvig: Elimination + Naked Singles als Fixpunkt-Iteration, dann Suche mit MRV. |
-| `dlx`    | Knuths Algorithm X mit Dancing Links; Sudoku als Exact-Cover-Matrix (729 Zeilen × 324 Spalten). Kanonische Form für **alle** Sprachen: die Matrix wird einmalig beim Start gebaut, pro Puzzle werden nur die veränderlichen Link-Arrays (L/R/U/D/size) kopiert und die Clue-Zeilen gecovert. |
-| `rules`  | Rein regelbasiert, ohne Raten: Naked/Hidden Singles, Naked/Hidden Pairs, Pointing Pairs, Box-Line-Reduction, X-Wing, Swordfish. Darf Puzzles ungelöst lassen — die Lösungsquote ist Teil des Ergebnisses. Darf nie eine falsche Lösung liefern. |
-| `mrv_mt` | Multithreading-Variante von `mrv`: Thread-Pool parallelisiert über die Puzzles des Batches (Puzzle-Level-Parallelismus; die Suche selbst bleibt sequenziell). Python: `multiprocessing` (GIL); Assembly: pthreads. Report zeigt Speedup gegenüber `mrv`. |
+| `naive`  | Backtracking, first empty cell, digits 1–9 in order. Baseline (matches the old notebook). |
+| `mrv`    | Backtracking with bitmask candidates (27 masks: 9 rows, 9 columns, 9 boxes) and most-constrained-cell selection (fewest candidates first, `popcnt`/`tzcnt`). |
+| `norvig` | Constraint propagation after Peter Norvig: elimination + naked singles as fixed-point iteration, then search with MRV. |
+| `dlx`    | Knuth's Algorithm X with Dancing Links; sudoku as exact-cover matrix (729 rows × 324 columns). Canonical form for **all** languages: the matrix is built once at startup; per puzzle only the mutable link arrays (L/R/U/D/size) are copied and the clue rows are covered. |
+| `rules`  | Purely rule-based, no guessing: naked/hidden singles, naked/hidden pairs, pointing pairs, box-line reduction, X-Wing, Swordfish. May leave puzzles unsolved — the solve rate is part of the result. Must never return a wrong solution. |
+| `mrv_mt` | Multithreading variant of `mrv`: a thread pool parallelizes over the puzzles of the batch (puzzle-level parallelism; the search itself stays sequential). Python: `multiprocessing` (GIL); Assembly: pthreads. Report shows speedup over `mrv`. |
 
-## Sprachen
+## Languages
 
 Python (CPython), JavaScript (Node), Go, Rust, C++, C, x86-64 Assembly
-(NASM, Linux-Syscalls; Zielmaschine MacBook Pro 11,1 = Haswell, AVX2/BMI
-verfügbar).
+(NASM, Linux syscalls; target machine MacBook Pro 11,1 = Haswell, AVX2/BMI
+available).
 
-C und C++ werden mit **beiden** Compilern gebaut und getrennt ausgewiesen —
-Harness-Keys `c-gcc`, `c-clang`, `cpp-gcc`, `cpp-clang`. Identischer
-Quelltext, identische Flags; der Vergleich misst die Codegenerierung.
-Damit ergeben sich 9 Sprach-Varianten × 6 Algorithmen = 54 Messpunkte aus
-42 Quelldateien.
+C and C++ are built with **both** compilers and reported separately —
+harness keys `c-gcc`, `c-clang`, `cpp-gcc`, `cpp-clang`. Identical
+source, identical flags; the comparison measures code generation.
+This gives 9 language variants × 6 algorithms = 54 data points from
+42 source files.
 
-Performance-Vorgaben:
+Performance requirements:
 - C/C++/Rust: `-O3 -march=native -flto` (Rust: `opt-level=3`, `lto=true`, `target-cpu=native`).
-- Assembly: NASM, `global main`, gegen libc gelinkt (`gcc -no-pie -pthread`).
-  I/O, Parsing, Zeitmessung und Ausgabe dürfen libc benutzen; der **Solver
-  selbst muss handgeschriebenes Assembly sein** — kein Aufruf eines C-Solvers.
-  Bitmasken in Registern, `tzcnt`/`popcnt`/`blsr`/`andn` (Haswell, BMI1/BMI2),
-  minimale Speicherzugriffe.
-- Python: flache Arrays statt verschachtelter Listen, lokale Namensbindung in Hot Loops; numpy nur wo es tatsächlich schneller ist.
-- JavaScript: monomorphe Typed Arrays (`Uint8Array`/`Uint32Array`).
-- Board-Repräsentation überall flach (81 Bytes) + 27 Bitmasken, cache-freundlich.
+- Assembly: NASM, `global main`, linked against libc (`gcc -no-pie -pthread`).
+  I/O, parsing, timing and output may use libc; the **solver
+  itself must be handwritten assembly** — no call into a C solver.
+  Bitmasks in registers, `tzcnt`/`popcnt`/`blsr`/`andn` (Haswell, BMI1/BMI2),
+  minimal memory accesses.
+- Python: flat arrays instead of nested lists, local name binding in hot loops; numpy only where it is actually faster.
+- JavaScript: monomorphic typed arrays (`Uint8Array`/`Uint32Array`).
+- Board representation flat everywhere (81 bytes) + 27 bitmasks, cache-friendly.
 
-## I/O-Vertrag (identisch für alle 42 Implementierungen)
+## I/O contract (identical for all 42 implementations)
 
-- Aufruf: `solver [reps] [threads] < puzzles.txt`; beide Argumente
-  optional, default 1. Single-threaded-Solver ignorieren `threads`.
-- Input (stdin): eine Zeile pro Puzzle, exakt 81 Zeichen aus `0`–`9`
-  (`0` = leere Zelle). Leere Zeilen und Zeilen mit `#` werden ignoriert.
-- Ablauf: alle Puzzles einlesen und parsen → Monotonic-Clock starten →
-  Solve-Schleife `reps`-mal über alle Puzzles → Clock stoppen.
-  Jede Wiederholung löst eine frische Kopie des ungelösten Puzzles
-  (der Kopiervorgang ist Teil der Messung, bei 81 Bytes vernachlässigbar).
-- Output (stdout): pro Puzzle eine Zeile, in Eingabereihenfolge:
-  die 81-stellige Lösung oder `UNSOLVED`.
-- Output (stderr): genau eine Zeile `ns=<gesamt-nanosekunden>` für die
-  komplette Solve-Schleife (alle reps).
-- Exit-Code 0, auch bei UNSOLVED-Puzzles.
+- Invocation: `solver [reps] [threads] < puzzles.txt`; both arguments
+  optional, default 1. Single-threaded solvers ignore `threads`.
+- Input (stdin): one line per puzzle, exactly 81 characters from `0`–`9`
+  (`0` = empty cell). Empty lines and lines with `#` are ignored.
+- Flow: read and parse all puzzles → start monotonic clock →
+  solve loop `reps` times over all puzzles → stop clock.
+  Each repetition solves a fresh copy of the unsolved puzzle
+  (the copy is part of the measurement, negligible at 81 bytes).
+- Output (stdout): one line per puzzle, in input order:
+  the 81-digit solution or `UNSOLVED`.
+- Output (stderr): exactly one line `ns=<total-nanoseconds>` for the
+  complete solve loop (all reps).
+- Exit code 0, even with UNSOLVED puzzles.
 
-Damit bleibt Interpreter-Start und I/O außerhalb der Messung; der
-Harness wählt `reps` so, dass die Messzeit ≥ ~1 s beträgt, und teilt.
+This keeps interpreter startup and I/O outside the measurement; the
+harness picks `reps` so that the measured time is ≥ ~1 s, and divides.
 
-## Puzzle-Sets (`puzzles/`)
+## Puzzle sets (`puzzles/`)
 
-| Datei | Inhalt |
+| File | Contents |
 |-------|--------|
-| `easy.txt` | 50 leichte Puzzles (viele Clues) |
-| `medium.txt` | 50 mittlere Puzzles |
-| `hard.txt` | Norvigs hard95 |
-| `extreme.txt` | 17-Clue-Auswahl + Anti-Backtracking-Puzzles (u.a. „platinum blonde") |
-| `verify.txt` + `verify_solutions.txt` | Verifikationsset mit bekannten Lösungen für die Korrektheitsprüfung |
+| `easy.txt` | 50 easy puzzles (many clues) |
+| `medium.txt` | 50 medium puzzles |
+| `hard.txt` | Norvig's hard95 |
+| `extreme.txt` | 17-clue selection + anti-backtracking puzzles (incl. "platinum blonde") |
+| `verify.txt` + `verify_solutions.txt` | Verification set with known solutions for the correctness check |
 
-Ergebnisse werden pro Set aggregiert. Pro (Implementierung, Set) gilt
-ein Timeout (default 60 s für den ganzen Lauf); Überschreitung = DNF.
+Results are aggregated per set. Each (implementation, set) has
+a timeout (default 60 s for the whole run); exceeding it = DNF.
 
-## Harness (`bench/run.py`, ein einziger für alle)
+## Harness (`bench/run.py`, a single one for all)
 
-1. **Build:** ruft `make` im Repo-Root; jede kompilierte Sprache hat ein
-   Makefile-Target, Skriptsprachen brauchen keins.
-2. **Verify:** führt jede Implementierung auf `verify.txt` aus und
-   vergleicht mit `verify_solutions.txt`. `rules` darf `UNSOLVED`
-   liefern, aber nie eine abweichende Lösung. Fehlschlag ⇒
-   Implementierung wird im Benchmark als FAIL markiert, nicht gemessen.
-   Zwei ergänzende Prüfungen laufen separat (nicht bei jedem Benchmark,
-   weil sie Minuten dauern): `tools/crosscheck.sh` misst jede
-   Implementierung an den Referenzlösungen aller 207 Puzzles,
-   `tools/contract_test.sh` prüft die Ränder des I/O-Vertrags
-   (Kommentar-/Leerzeilen, leere Eingabe, widersprüchliche Puzzles,
-   Argumentbehandlung, Form der `ns=`-Zeile).
-3. **Bench:** pro (Implementierung, Set): reps kalibrieren, laufen
-   lassen, `ns=` einlesen, Lösungen erneut verifizieren. `mrv_mt` läuft
-   mit `threads` = Anzahl CPU-Kerne. Der Harness löscht beim Start
-   `PR_SET_THP_DISABLE` per `prctl(41,0)` (ctypes), damit lokale Läufe
-   aus Claude-Sessions dieselbe THP-Umgebung haben wie ein normales
-   Terminal bzw. GitHub-Runner.
-4. **Report:** Text-Tabelle auf stdout (µs/Puzzle Median über Sets,
-   Puzzles/s, Lösungsquote); Rohdaten als JSON nach
+1. **Build:** runs `make` in the repo root; each compiled language has a
+   Makefile target, scripting languages need none.
+2. **Verify:** runs each implementation on `verify.txt` and
+   compares with `verify_solutions.txt`. `rules` may return `UNSOLVED`,
+   but never a differing solution. Failure ⇒
+   implementation is marked FAIL in the benchmark, not measured.
+   Two supplementary checks run separately (not on every benchmark,
+   because they take minutes): `tools/crosscheck.sh` checks each
+   implementation against the reference solutions of all 207 puzzles,
+   `tools/contract_test.sh` checks the edges of the I/O contract
+   (comment/empty lines, empty input, contradictory puzzles,
+   argument handling, shape of the `ns=` line).
+3. **Bench:** per (implementation, set): calibrate reps, run,
+   read `ns=`, re-verify solutions. `mrv_mt` runs
+   with `threads` = number of CPU cores. At startup the harness clears
+   `PR_SET_THP_DISABLE` via `prctl(41,0)` (ctypes), so that local runs
+   from Claude sessions have the same THP environment as a normal
+   terminal or GitHub runner.
+4. **Report:** text table on stdout (µs/puzzle median over sets,
+   puzzles/s, solve rate); raw data as JSON to
    `results/<timestamp>.json`.
-5. **Kosten:** nach den Timings misst `bench/cost.py` je Implementierung
-   Artefaktgröße (Binary bzw. ausgelieferter Quelltext, plus gestrippt),
-   Startzeit und Resident Memory bei leerer Eingabe sowie Peak-RSS beim
-   Lösen des `hard`-Sets; je Sprache Quellzeilen, Toolchain-Version und
-   die Dauer eines Clean-Builds. Läuft bewusst *nach* der Messung, weil
-   der Clean-Build die gerade vermessenen Binaries ersetzt.
-   `--no-cost` überspringt das, `--cost-only <json>` misst nur nach.
-6. **README:** generiert aus dem JSON die Ergebnis-Sektion des README:
-   Markdown-Tabellen plus Chart-PNGs (matplotlib) nach `assets/` —
-   Zeit pro Algorithmus×Sprache (log-Skala, die Spanne beträgt mehrere
-   Größenordnungen) und Lösungsquote für `rules`. Nur der Harness
-   visualisiert; die 42 Solver selbst bleiben beim minimalen I/O-Vertrag.
+5. **Cost:** after the timings, `bench/cost.py` measures per implementation
+   artifact size (binary or shipped source, plus stripped),
+   startup time and resident memory on empty input, and peak RSS while
+   solving the `hard` set; per language source lines, toolchain version and
+   the duration of a clean build. Deliberately runs *after* the measurement, because
+   the clean build replaces the binaries just measured.
+   `--no-cost` skips this, `--cost-only <json>` only measures cost afterwards.
+6. **README:** generates the results section of the README from the JSON:
+   Markdown tables plus chart PNGs (matplotlib) to `assets/` —
+   time per algorithm×language (log scale, the range spans several
+   orders of magnitude) and solve rate for `rules`. Only the harness
+   visualizes; the 42 solvers themselves stick to the minimal I/O contract.
 
-CLI: `bench/run.py [--lang ...] [--algo ...] [--set ...]` zum Filtern.
+CLI: `bench/run.py [--lang ...] [--algo ...] [--set ...]` for filtering.
 
-## Repo-Struktur
+## Repo structure
 
 ```
 sudoku/
-├── Makefile                 # baut alle kompilierten Implementierungen
-├── algorithms.md            # Beschreibung der 6 Algorithmen
-├── puzzles/                 # Puzzle-Sets (s.o.)
+├── Makefile                 # builds all compiled implementations
+├── algorithms.md            # description of the 6 algorithms
+├── puzzles/                 # puzzle sets (see above)
 ├── impl/
 │   ├── python/{naive,mrv,norvig,dlx,rules,mrv_mt}.py + _contract.py
 │   ├── javascript/*.js
-│   ├── go/*.go              # je eine eigenständige main-Datei
-│   ├── rust/                # ein Cargo-Projekt, 6 Binaries + src/lib.rs
-│   ├── cpp/*.cpp            # je einmal mit g++ und clang++ gebaut
-│   ├── c/*.c                # je einmal mit gcc und clang gebaut
-│   └── asm/*.asm            # NASM, gegen libc gelinkt
+│   ├── go/*.go              # one standalone main file each
+│   ├── rust/                # one Cargo project, 6 binaries + src/lib.rs
+│   ├── cpp/*.cpp            # each built once with g++ and clang++
+│   ├── c/*.c                # each built once with gcc and clang
+│   └── asm/*.asm            # NASM, linked against libc
 ├── bench/
-│   ├── run.py               # Build + Verify + Bench
-│   └── report.py            # Tabellen, Charts, README-Generierung
+│   ├── run.py               # build + verify + bench
+│   └── report.py            # tables, charts, README generation
 ├── tools/
-│   ├── normalize.py         # Fremdformate -> 81-Zeichen-Zeilen
-│   ├── validate_puzzles.py  # Gültigkeit + Eindeutigkeit + Referenzlösungen
-│   ├── crosscheck.sh        # alle Implementierungen gegen alle 207 Puzzles
-│   └── contract_test.sh     # I/O-Vertrag in Randfällen
-├── assets/                  # generierte Chart-PNGs fürs README
-└── results/                 # Roh-JSON pro Lauf (gitignored bis auf github-runner.json)
+│   ├── normalize.py         # foreign formats -> 81-char lines
+│   ├── validate_puzzles.py  # validity + uniqueness + reference solutions
+│   ├── crosscheck.sh        # all implementations against all 207 puzzles
+│   └── contract_test.sh     # I/O contract in edge cases
+├── assets/                  # generated chart PNGs for the README
+└── results/                 # raw JSON per run (gitignored except github-runner.json)
 ```
 
-Das alte `SudokuSolver.ipynb` wird gelöscht (bleibt in der Git-History).
+The old `SudokuSolver.ipynb` is deleted (remains in the Git history).
 
-## Fehlerbehandlung
+## Error handling
 
-- Ungültige Puzzles (Widerspruch in den Clues): Solver gibt `UNSOLVED` aus, stürzt nicht ab.
-- Harness wertet fehlende/zu wenige Output-Zeilen, fehlendes `ns=`, Crash oder Timeout als FAIL/DNF und benennt die Implementierung im Report.
+- Invalid puzzles (contradiction in the clues): solver outputs `UNSOLVED`, does not crash.
+- Harness treats missing/too few output lines, missing `ns=`, crash or timeout as FAIL/DNF and names the implementation in the report.
 
-## CI: normierte Ergebnisse via GitHub Actions
+## CI: normalized results via GitHub Actions
 
-- `.github/workflows/bench.yml`: `workflow_dispatch` + Push auf `main`;
-  ubuntu-latest; installiert Toolchains (gcc, g++, rustup, go, node,
-  nasm), baut, führt `bench/run.py` komplett aus.
-- Ergebnisse: `results/<sha>.json`, Text-Report und Chart-PNGs als
-  Workflow-Artifacts; bei `workflow_dispatch` zusätzlich Commit von
-  README-Sektion + `assets/` zurück ins Repo.
-- Runner-Hardware ist einheitlich, aber shared — der Report weist die
-  Runner-CPU aus (`/proc/cpuinfo`) und der Harness nimmt pro Messung
-  den Median aus 3 Läufen.
-- Das Repo wird public geschaltet, sobald der komplette Benchmark lokal
-  einmal grün durchgelaufen ist (vorher: Test auf dieser Maschine).
+- `.github/workflows/bench.yml`: `workflow_dispatch` + push to `main`;
+  ubuntu-latest; installs toolchains (gcc, g++, rustup, go, node,
+  nasm), builds, runs `bench/run.py` in full.
+- Results: `results/<sha>.json`, text report and chart PNGs as
+  workflow artifacts; on `workflow_dispatch` additionally a commit of the
+  README section + `assets/` back to the repo.
+- Runner hardware is uniform, but shared — the report states the
+  runner CPU (`/proc/cpuinfo`) and the harness takes per measurement
+  the median of 3 runs.
+- The repo is made public once the complete benchmark has run green
+  locally once (before that: testing on this machine).
 
-## Umsetzungsphasen
+## Implementation phases
 
-1. Gerüst: Repo-Struktur, Puzzle-Sets, Referenzlösungen, Harness mit Verify.
-2. Python: alle 6 Implementierungen (dient als Referenz für alle weiteren).
-3. C: alle 6 (Vorlage für die übrigen kompilierten Sprachen).
+1. Scaffold: repo structure, puzzle sets, reference solutions, harness with verify.
+2. Python: all 6 implementations (serves as reference for all others).
+3. C: all 6 (template for the remaining compiled languages).
 4. C++, Rust, Go, JavaScript.
-5. Assembly: naive, mrv, mrv_mt (pthreads), dann norvig, dlx, rules.
-6. Mikrooptimierungs-Pass pro Sprache, finaler lokaler Volllauf.
-7. CI-Workflow, Repo public, Referenzlauf auf GitHub-Runnern, Ergebnisse ins README.
+5. Assembly: naive, mrv, mrv_mt (pthreads), then norvig, dlx, rules.
+6. Micro-optimization pass per language, final local full run.
+7. CI workflow, repo public, reference run on GitHub runners, results into the README.
 
-Jede Phase endet mit grünem Verify und einem Commit.
+Each phase ends with a green verify and a commit.
 
-## Nicht-Ziele (bewusst weggelassen)
+## Non-goals (deliberately omitted)
 
-- GUI, Puzzle-Generator, Schwierigkeitsbewertung.
-- Intra-Puzzle-Parallelisierung (paralleler Suchbaum): parallelisiert wird nur über Puzzles (`mrv_mt`); die 5 Kern-Algorithmen bleiben single-threaded, damit der Algorithmen-Vergleich sauber bleibt.
+- GUI, puzzle generator, difficulty rating.
+- Intra-puzzle parallelization (parallel search tree): parallelization is only over puzzles (`mrv_mt`); the 5 core algorithms stay single-threaded so the algorithm comparison stays clean.
