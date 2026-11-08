@@ -2,8 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -33,9 +34,7 @@ jobs:
       - run: pytest -q tests
 
   # Every implementation in every language against the reference solutions.
-  # Pushes to master already get this from the verify job in bench.yml.
   correctness:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -46,3 +45,25 @@ jobs:
         run: tools/contract_test.sh
       - name: Check every implementation against reference solutions
         run: TIMEOUT=60 tools/crosscheck.sh easy medium
+
+  # Tags every tested commit on main with the next patch version (vX.Y.Z).
+  version:
+    name: Version tag
+    needs: [lint, test, correctness]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: version-tag
+      cancel-in-progress: false
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: tag
+        run: python3 .github/scripts/release.py tag
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -5,7 +5,7 @@ assembly, measured against one I/O contract and checked against reference
 solutions before any number is published.
 
 [![ci](https://github.com/michaelkrisper/sudoku/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelkrisper/sudoku/actions/workflows/ci.yml)
-[![verify](https://github.com/michaelkrisper/sudoku/actions/workflows/bench.yml/badge.svg)](https://github.com/michaelkrisper/sudoku/actions/workflows/bench.yml)
+[![version](https://img.shields.io/github/v/tag/michaelkrisper/sudoku?sort=semver&label=version)](https://github.com/michaelkrisper/sudoku/releases)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![python: 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](requirements-dev.txt)
 [![rust: edition 2024](https://img.shields.io/badge/rust-edition%202024-orange.svg)](impl/rust/Cargo.toml)
@@ -187,9 +187,13 @@ pytest tests                         # reference solver, harness, report and Pyt
 ```
 
 CI (`.github/workflows/ci.yml`) runs lint and unit tests on every push and pull
-request; pull requests additionally build all 54 implementations and run
-`--verify`, the contract test and the cross-check. The `benchmark` workflow
-re-runs those checks on `master` and measures only when started manually.
+request, builds all 54 implementations and runs `--verify`, the contract test
+and the cross-check; every merge to `main` is then tagged with the next patch
+version, and bundled releases come from the Release workflow. The `benchmark`
+workflow measures only when started manually and uploads the regenerated
+README, charts and `results/github-runner.json` as an artifact, to be committed
+through a pull request. Changes go through issues and pull requests, see
+[CONTRIBUTING](CONTRIBUTING.md).
 
 Design notes and the original implementation plan live in
 [docs/superpowers](docs/superpowers).
