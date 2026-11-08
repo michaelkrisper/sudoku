@@ -1,15 +1,14 @@
 name: benchmark
 
-# Correctness runs on every push; the benchmark itself is deliberately manual.
+# Correctness runs in ci on every push; the benchmark itself is deliberately manual.
 # A full measured run takes the better part of an hour, and its numbers are only
-# meaningful when nothing else is competing for the runner.
+# meaningful when nothing else is competing for the runner. The results (README,
+# charts, JSON) come back as an artifact: main only takes changes through pull requests.
 on:
   workflow_dispatch:
-  push:
-    branches: [master]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -53,15 +52,6 @@ jobs:
         with:
           name: benchmark-results
           path: |
+            README.md
             results/github-runner.json
             assets/*.png
-
-      - name: Commit results
-        run: |
-          git config user.name  'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add README.md assets results/github-runner.json
-          git diff --quiet --cached || git commit -m "Benchmark results from GitHub runner"
-          # a run takes the better part of an hour; master has usually moved on
-          git pull --rebase origin "${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
