@@ -2,13 +2,13 @@
 
 Photograph a sudoku with your phone and see the solution instantly.
 
-[![CI](https://github.com/michaelkrisper/sudokufoto/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelkrisper/sudokufoto/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/github/v/tag/michaelkrisper/sudokufoto?sort=semver&label=version)](https://github.com/michaelkrisper/sudokufoto/releases)
+[![CI](https://github.com/michaelkrisper/sudoku/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelkrisper/sudoku/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/github/v/tag/michaelkrisper/sudoku?sort=semver&label=version)](https://github.com/michaelkrisper/sudoku/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
-[![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-2ea44f)](https://michaelkrisper.github.io/sudokufoto/)
+[![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-2ea44f)](https://michaelkrisper.github.io/sudoku/)
 
-**Live: https://michaelkrisper.github.io/sudokufoto/**
+**Live: https://michaelkrisper.github.io/sudoku/**
 
 An installable web app (PWA) for Android and iPhone. Recognition and solving
 run entirely on the device. The user interface is in German.
