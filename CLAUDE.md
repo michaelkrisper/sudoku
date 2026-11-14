@@ -4,7 +4,7 @@ Installable web app: photograph a sudoku and see the solution drawn into the pho
 Grid detection, digit recognition (own small neural net), handwriting separation and
 the solver all run in the browser. Vanilla JS ES modules, no framework, no build step,
 no runtime dependencies. CI deploys `main` to GitHub Pages
-(https://michaelkrisper.github.io/sudokufoto/). Python is only used offline to render
+(https://michaelkrisper.github.io/sudoku/). Python is only used offline to render
 synthetic photos and train the net.
 
 ## Commands
