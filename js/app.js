@@ -1,4 +1,5 @@
 import { conflicts, solve } from './solver.js';
+import { VERSION } from './version.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sudokufoto-v1';
@@ -540,4 +541,5 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('sw.js');
 }
 
+$('version').textContent = `Version ${VERSION}`;
 show('cam');

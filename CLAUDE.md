@@ -58,6 +58,8 @@ solution overlay.
 - `tools/synth.py` splits fonts by family: `--fonts test` uses families never seen in
   training. Keep validation on unseen families.
 - `sw.js`: network-first service worker; offline from the `SHELL` list.
+- `js/version.js` (`VERSION`, shown in the camera screen's button bar) holds `dev`; the
+  deploy job writes the release tag into it.
 
 ## Conventions
 

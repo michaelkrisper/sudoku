@@ -130,12 +130,23 @@ svg {
   font-size: 19px;
 }
 .cam-bar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-around;
   height: 112px;
   flex: none;
   padding: 0 18px;
+}
+/* in the corner below the buttons, never over the camera picture */
+.version {
+  position: absolute;
+  right: 14px;
+  bottom: 6px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
 }
 .round {
   width: 50px;
