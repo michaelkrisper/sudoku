@@ -3,8 +3,8 @@
 Installable web app: photograph a sudoku and see the solution drawn into the photo.
 Grid detection, digit recognition (own small neural net), handwriting separation and
 the solver all run in the browser. Vanilla JS ES modules, no framework, no build step,
-no runtime dependencies. CI deploys `main` to GitHub Pages
-(https://michaelkrisper.github.io/sudoku/). Python is only used offline to render
+no runtime dependencies. CI deploys `main` to the own server
+(https://sudoku.krisperapps.de/). Python is only used offline to render
 synthetic photos and train the net.
 
 ## Commands
@@ -91,6 +91,5 @@ solution overlay.
 - PRs auto-merge (squash) once CI and the "Linked ticket" check pass; drafts are not merged.
 - Versions exist only as git tags `vX.Y.Z`. Every merge to `main` tags the next patch;
   never edit version numbers in files. Minor/major releases: Actions -> Release.
-- Merging to `main` deploys to GitHub Pages and to
-  https://sudoku.krisperapps.de/ automatically.
+- Merging to `main` deploys to https://sudoku.krisperapps.de/ automatically.
 - Details: CONTRIBUTING.md.
