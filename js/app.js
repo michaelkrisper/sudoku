@@ -541,5 +541,5 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('sw.js');
 }
 
-$('version').textContent = `Version ${VERSION}`;
+$('version').textContent = VERSION === 'dev' ? 'dev' : `v${VERSION}`;
 show('cam');

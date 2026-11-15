@@ -179,7 +179,7 @@ try {
       clear: ![...document.querySelectorAll('#cam-view, .cam-bar > :not(.version)')].some(hit),
     };
   })()`);
-  check(version.text === 'Version dev', `camera screen shows the version (${version.text})`);
+  check(version.text === 'dev', `camera screen shows the version (${version.text})`);
   check(version.clear, 'version line covers neither the camera picture nor a button');
 
   // 1. live camera: automatic capture and solution
