@@ -172,15 +172,21 @@ try {
   check((await evaluate(overflow)).length === 0, 'camera screen does not overflow');
   // The repository holds the placeholder; the deploy writes the release tag.
   const version = await evaluate(`(() => {
-    const v = document.getElementById('version').getBoundingClientRect();
+    const v = document.querySelector('.version').getBoundingClientRect();
     const hit = (el) => { const r = el.getBoundingClientRect(); return r.width && r.left < v.right && v.left < r.right && r.top < v.bottom && v.top < r.bottom; };
     return {
       text: document.getElementById('version').textContent,
       clear: ![...document.querySelectorAll('#cam-view, .cam-bar > :not(.version)')].some(hit),
+      legal: [...document.querySelectorAll('.version a')].map((a) => a.href).join(' '),
     };
   })()`);
   check(version.text === 'dev', `camera screen shows the version (${version.text})`);
   check(version.clear, 'version line covers neither the camera picture nor a button');
+  check(
+    version.legal ===
+      'https://krisperapps.de/impressum https://krisperapps.de/datenschutz#sudoku https://krisperapps.de/nutzung',
+    'camera screen links the legal pages',
+  );
 
   // 1. live camera: automatic capture and solution
   const t0 = Date.now();
