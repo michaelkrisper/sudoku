@@ -6,9 +6,9 @@ Photograph a sudoku with your phone and see the solution instantly.
 [![Version](https://img.shields.io/github/v/tag/michaelkrisper/sudoku?sort=semver&label=version)](https://github.com/michaelkrisper/sudoku/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
-[![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-2ea44f)](https://michaelkrisper.github.io/sudoku/)
+[![Live demo](https://img.shields.io/badge/demo-live-2ea44f)](https://sudoku.krisperapps.de/)
 
-**Live: https://michaelkrisper.github.io/sudoku/**
+**Live: https://sudoku.krisperapps.de/**
 
 An installable web app (PWA) for Android and iPhone. Recognition and solving
 run entirely on the device. The user interface is in German.
@@ -86,7 +86,7 @@ python3 tools/train.py train-*.bin --val val.bin  # writes js/model.js
 ```
 
 Every push and pull request runs lint, the unit tests and the end-to-end test;
-only if they pass is `main` deployed to GitHub Pages. Every merge to `main` is
+only if they pass is `main` deployed to sudoku.krisperapps.de. Every merge to `main` is
 tagged with the next patch version; bundled releases with release notes come
 from the Release workflow (see
 [CONTRIBUTING](CONTRIBUTING.md#versions-and-releases)).
