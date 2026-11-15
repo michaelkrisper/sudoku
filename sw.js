@@ -7,6 +7,7 @@ const SHELL = [
   'style.css',
   'manifest.webmanifest',
   'js/app.js',
+  'js/version.js',
   'js/worker.js',
   'js/detect.js',
   'js/ocr.js',

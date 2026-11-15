@@ -59,6 +59,7 @@ jobs:
 
   # Publishes to the own server (https://sudoku.krisperapps.de/). The key may
   # only write into this app's folder there; this job runs no code from the repo.
+  # js/version.js gets the release tag, which the camera screen shows.
   server:
     name: krisperapps.de
     # Only commits that got a version tag: a re-run of an older run deploys nothing.
@@ -70,7 +71,11 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
-      - run: mkdir _site && cp -r index.html style.css sw.js manifest.webmanifest js icons _site/
+      - env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          mkdir _site && cp -r index.html style.css sw.js manifest.webmanifest js icons _site/
+          printf "export const VERSION = '%s';\n" "${VERSION#v}" > _site/js/version.js
       - name: Upload
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
